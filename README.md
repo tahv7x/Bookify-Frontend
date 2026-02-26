@@ -1,8 +1,8 @@
 # Bookify Frontend
 
-![GitHub repo size](https://img.shields.io/github/repo-size/USERNAME/bookify-frontend?style=flat-square)
-![GitHub language count](https://img.shields.io/github/languages/count/USERNAME/bookify-frontend?style=flat-square)
-![GitHub last commit](https://img.shields.io/github/last-commit/USERNAME/bookify-frontend?style=flat-square)
+![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
 
 ## Description
 React + TypeScript frontend for **Bookify project** using Vite.  
