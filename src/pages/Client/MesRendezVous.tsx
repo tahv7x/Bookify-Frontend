@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from '../../components/Client/Navbar';
 import TopBar from '../../components/Client/TopBar';
 
@@ -9,6 +9,19 @@ import TopBar from '../../components/Client/TopBar';
 const MesRendezVous: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
+  const[userName,setUserName] = useState('');
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if(userStr){
+      try{
+        const u = JSON.parse(userStr);
+        setUserName(u.nom || u.nomComplet || "");
+      }catch(e){
+        
+      }
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#F4F7FE]">
@@ -124,7 +137,7 @@ const MesRendezVous: React.FC = () => {
 
         {/* Top Bar */}
         <TopBar 
-          userName="Aya"
+          userName={userName}
           onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
           isMobileMenuOpen={isSidebarOpen}
         />

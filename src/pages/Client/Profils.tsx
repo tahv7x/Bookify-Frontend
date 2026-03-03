@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from '../../components/Client/Navbar';
 import TopBar from '../../components/Client/TopBar';
 
@@ -24,7 +24,7 @@ const Profils: React.FC = () => {
   // ── Dashboard layout state ──
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('profils');
-
+  const [userName, setUserName] = useState('');
   // ── Profile/Settings state ──
   const [currentPage, setCurrentPage]           = useState<ProfilePage>('profile');
   const [isEditing, setIsEditing]               = useState(false);
@@ -34,14 +34,35 @@ const Profils: React.FC = () => {
 
   const [notifState, setNotifState] = useState([true, true, false, true, false]);
   const [privacyState, setPrivacyState] = useState([true, true, false]);
+  //pour recupperer les valeurs des utilisateurs de localstorage 
+  useEffect(() => {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      const u = JSON.parse(userStr);
 
+      const names = u.nom?.split(" ") || [];
+
+      const data: UserData = {
+        firstName: names[0] || "",
+        lastName: names.slice(1).join(" ") || "",
+        email: u.email || "",
+        phone: u.telephone || "",
+        city: u.adresse || "",
+        bio: ""
+      };
+
+      setUserName(u.nom);
+      setUserData(data);
+      setFormData(data);
+    }
+  }, []);
   const [userData, setUserData] = useState<UserData>({
-    firstName: 'Aya',
-    lastName:  'Eddahmani',
-    email:     'aya.eddahmani@gmail.com',
-    phone:     '+212 6 12 34 56 78',
-    city:      'Casablanca, Maroc',
-    bio:       'Cliente fidèle de Bookify depuis 2023. J\'apprécie la facilité de réservation.',
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    city: "",
+    bio: ""
   });
   const [formData, setFormData] = useState<UserData>({ ...userData });
 
@@ -235,7 +256,7 @@ const Profils: React.FC = () => {
 
         {/* Top Bar */}
         <TopBar 
-          userName="Aya"
+          userName={userName}
           onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
           isMobileMenuOpen={isSidebarOpen}
         />
@@ -279,7 +300,14 @@ const Profils: React.FC = () => {
               <button className="prof-nav">
                 <HelpCircle size={16} /> Aide
               </button>
-              <button className="prof-nav" style={{ color: '#ef4444' }}>
+              <button
+                className="prof-nav"
+                style={{ color: '#ef4444' }}
+                onClick={() => {
+                  localStorage.removeItem("user");
+                  window.location.href = "/login";
+                }}
+                >
                 <LogOut size={16} style={{ color: '#ef4444' }} /> Déconnexion
               </button>
             </div>

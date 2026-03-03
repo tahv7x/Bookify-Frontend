@@ -9,6 +9,7 @@ const Home: React.FC = () => {
   const [activeSection, setActiveSection] = useState('home');
   const [, setIsScrolled] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('Tous');
+  const [userName, setUserName] = useState('');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -153,6 +154,18 @@ const servicesData: { [key: string]: Array<{ title: string; img: string }> } = {
         ]);
       })
       .catch(err => console.error(err));
+  }, []);
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        setUserName(u.nom || u.NomComplet || u.name || '');
+      } catch (e) {
+        // ignore
+      }
+    }
   }, []);
 
   return (
@@ -308,7 +321,7 @@ const servicesData: { [key: string]: Array<{ title: string; img: string }> } = {
 
         {/* Top Bar */}
         <TopBar 
-          userName="Aya"
+          userName = {userName}
           onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
           isMobileMenuOpen={isSidebarOpen}
         />

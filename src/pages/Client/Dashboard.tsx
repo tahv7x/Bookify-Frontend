@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {  Calendar, MoreVertical, Upload, CheckCircle, Clock } from 'lucide-react';
 import Navbar from '../../components/Client/Navbar';
 import TopBar from '../../components/Client/TopBar';
 import StatsCard, { type StatsCardProps } from   '../../components/Client/StatCard';
 import Footer from '../../components/Client/Footer';
+  
 
 interface Appointment {
   name: string;
@@ -29,6 +30,7 @@ interface StatusBadgeProps {
 
 
 const DashboardClient: React.FC = () => {
+  const [userName, setUserName] = useState('');
   const [activeSection, setActiveSection] = useState<string>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
@@ -100,7 +102,15 @@ const DashboardClient: React.FC = () => {
     { name: "Najm Yussef", specialty: "Dentiste", time: "il tem", avatar: "https://i.pravatar.cc/150?img=33" },
     { name: "Boutnaame Amin", specialty: "Docteur", time: "il tem", avatar: "https://i.pravatar.cc/150?img=14" }
   ];
-
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        setUserName(u.nom || u.NoComplet || "");
+      } catch (e) {}
+    }
+  }, []);
   
   const StatusBadge: React.FC<StatusBadgeProps> = ({ status, statusType }) => {
     const statusConfig = {
@@ -251,7 +261,7 @@ const DashboardClient: React.FC = () => {
 
         {/* Top Bar */}
         <TopBar 
-          userName="Aya"
+          userName={userName}
           onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
           isMobileMenuOpen={isSidebarOpen}
         />
