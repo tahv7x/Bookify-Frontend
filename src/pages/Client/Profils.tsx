@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from '../../components/Client/Navbar';
 import TopBar from '../../components/Client/TopBar';
-
 import Footer from '../../components/Client/Footer';
+import { updateUser } from '../../services/Client/UpdateUser'; // ← import service
+import api from '../../services/api'; // ← for change password
 import {
   User, Settings, Star, Calendar, ChevronRight,
   Camera, Edit3, Mail, Phone, MapPin, Lock,
-  Bell, Shield, LogOut, Check, X, Eye, EyeOff, HelpCircle
+  Bell, Shield, LogOut, Check, X, Eye, EyeOff, HelpCircle, Loader2, AlertCircle
 } from 'lucide-react';
 
 type ProfilePage = 'profile' | 'settings';
@@ -21,93 +22,224 @@ interface UserData {
 }
 
 const Profils: React.FC = () => {
-  // ── Dashboard layout state ──
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('profils');
   const [userName, setUserName] = useState('');
-  // ── Profile/Settings state ──
-  const [currentPage, setCurrentPage]           = useState<ProfilePage>('profile');
-  const [isEditing, setIsEditing]               = useState(false);
-  const [showPassword, setShowPassword]         = useState(false);
+  const [userId, setUserId] = useState<number | null>(null); // ← store user ID
+
+  const [currentPage, setCurrentPage]             = useState<ProfilePage>('profile');
+  const [isEditing, setIsEditing]                 = useState(false);
+  const [showPassword, setShowPassword]           = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState('info');
-  const [saved, setSaved]                       = useState(false);
+  const [saved, setSaved]                         = useState(false);
+  const [isSaving, setIsSaving]                   = useState(false); // ← loading state
+  const [saveError, setSaveError]                 = useState<string | null>(null); // ← error state
 
-  const [notifState, setNotifState] = useState([true, true, false, true, false]);
-  const [privacyState, setPrivacyState] = useState([true, true, false]);
-  //pour recupperer les valeurs des utilisateurs de localstorage 
-  useEffect(() => {
-    const userStr = localStorage.getItem("user");
-    if (userStr) {
-      const u = JSON.parse(userStr);
+  // Password change state
+  const [pwForm, setPwForm]           = useState({ current: '', next: '', confirm: '' });
+  const [pwError, setPwError]         = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess]     = useState(false);
+  const [isSavingPw, setIsSavingPw]   = useState(false);
+  const [showPwFields, setShowPwFields] = useState({ current: false, next: false, confirm: false });
 
-      const names = u.nom?.split(" ") || [];
+  // Notif & privacy — load from localStorage
+  const [notifState, setNotifState]   = useState<boolean[]>(() => {
+    const saved = localStorage.getItem('notifState');
+    return saved ? JSON.parse(saved) : [true, true, false, true, false];
+  });
+  const [privacyState, setPrivacyState] = useState<boolean[]>(() => {
+    const saved = localStorage.getItem('privacyState');
+    return saved ? JSON.parse(saved) : [true, true, false];
+  });
 
-      const data: UserData = {
-        firstName: names[0] || "",
-        lastName: names.slice(1).join(" ") || "",
-        email: u.email || "",
-        phone: u.telephone || "",
-        city: u.adresse || "",
-        bio: ""
-      };
-
-      setUserName(u.nom);
-      setUserData(data);
-      setFormData(data);
-    }
-  }, []);
   const [userData, setUserData] = useState<UserData>({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    city: "",
-    bio: ""
+    firstName: '', lastName: '', email: '', phone: '', city: '', bio: ''
   });
   const [formData, setFormData] = useState<UserData>({ ...userData });
 
-  const handleSave = () => {
-    setUserData({ ...formData });
-    setIsEditing(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  // Load user from localStorage
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const u = JSON.parse(userStr);
+      console.log('🔵 [Profils] localStorage user keys:', Object.keys(u));
+      console.log('🔵 [Profils] localStorage user full object:', u);
+
+      const names = (u.nomComplet || u.nom || '').split(' ');
+      const data: UserData = {
+        firstName: names[0] || '',
+        lastName:  names.slice(1).join(' ') || '',
+        email:     u.email || '',
+        phone:     u.telephone || '',
+        city:      u.adresse || '',
+        bio:       localStorage.getItem('userBio') || ''
+      };
+
+      // Try every common id field name so nothing is missed
+      const resolvedId = u.idUtilisateur ?? u.id ?? u.userId ?? u.Id ?? null;
+      console.log('🔵 [Profils] resolved userId:', resolvedId);
+
+      setUserId(resolvedId);
+      setUserName(u.nomComplet || u.nom || '');
+      setUserData(data);
+      setFormData(data);
+    } else {
+      console.warn('⚠️ [Profils] No "user" key in localStorage — user may not be logged in');
+    }
+  }, []);
+
+  // ── Save handler — calls API then updates localStorage ──
+  const handleSave = async () => {
+    // Debug: log everything we know before trying
+    const rawUser = localStorage.getItem('user');
+    console.log('🔵 [handleSave] userId state:', userId);
+    console.log('🔵 [handleSave] localStorage user:', rawUser ? JSON.parse(rawUser) : 'NULL - not found');
+    console.log('🔵 [handleSave] formData:', formData);
+
+    if (userId === null) {
+      console.error('❌ [handleSave] userId is null — check that your login response includes an "id" field in the user object saved to localStorage');
+      setSaveError('Impossible d\'identifier l\'utilisateur. Veuillez vous reconnecter.');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      const payload = {
+        NomComplet: `${formData.firstName} ${formData.lastName}`.trim(),
+        Telephone:  formData.phone,
+        Adresse:    formData.city,
+        Role:       JSON.parse(localStorage.getItem('user') || '{}').role ?? '',
+      };
+
+      console.log('🚀 [handleSave] Calling PUT /utilisateur/' + userId, payload);
+      const result = await updateUser(userId, payload);
+      console.log('✅ [handleSave] API response:', result);
+
+      // Re-read localStorage so our local state stays in sync
+      const updated = JSON.parse(localStorage.getItem('user') || '{}');
+      console.log('✅ [handleSave] Updated localStorage user:', updated);
+
+      const names = (updated.nomComplet || updated.nom || '').split(' ');
+      setUserData({
+        firstName: names[0] || formData.firstName,
+        lastName:  names.slice(1).join(' ') || formData.lastName,
+        email:     updated.email     || formData.email,
+        phone:     updated.telephone || formData.phone,
+        city:      updated.adresse   || formData.city,
+        bio:       formData.bio,
+      });
+      // Save bio to localStorage separately (not in DB)
+      localStorage.setItem('userBio', formData.bio);
+
+      setUserName(updated.nomComplet || updated.nom || `${formData.firstName} ${formData.lastName}`);
+      setIsEditing(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err: any) {
+      console.error('❌ [handleSave] Error:', err);
+      console.error('❌ [handleSave] Response data:', err?.response?.data);
+      console.error('❌ [handleSave] Status:', err?.response?.status);
+      setSaveError(
+        err?.response?.data?.message ||
+        'Une erreur est survenue. Veuillez réessayer.'
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
     setFormData({ ...userData });
     setIsEditing(false);
+    setSaveError(null);
+  };
+
+  // ── Change password handler ──
+  const handleChangePassword = async () => {
+    setPwError(null);
+    if (!pwForm.current || !pwForm.next || !pwForm.confirm) {
+      setPwError('Veuillez remplir tous les champs.');
+      return;
+    }
+    if (pwForm.next.length < 8) {
+      setPwError('Le nouveau mot de passe doit contenir au moins 8 caractères.');
+      return;
+    }
+    if (pwForm.next !== pwForm.confirm) {
+      setPwError('Les mots de passe ne correspondent pas.');
+      return;
+    }
+    setIsSavingPw(true);
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      await api.put(`/auth/change-password/${user.idUtilisateur}`, {
+        AncienMotDePasse: pwForm.current,
+        NouveauMotDePasse: pwForm.next,
+      });
+      setPwSuccess(true);
+      setPwForm({ current: '', next: '', confirm: '' });
+      setTimeout(() => setPwSuccess(false), 3000);
+    } catch (err: any) {
+      console.error('❌ [changePassword]', err);
+      setPwError(
+        err?.response?.data?.message ||
+        err?.response?.data ||
+        'Mot de passe actuel incorrect.'
+      );
+    } finally {
+      setIsSavingPw(false);
+    }
+  };
+
+  // ── Toggle handlers — auto-save to localStorage ──
+  const handleNotifToggle = (i: number) => {
+    setNotifState(prev => {
+      const next = prev.map((v, j) => j === i ? !v : v);
+      localStorage.setItem('notifState', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handlePrivacyToggle = (i: number) => {
+    setPrivacyState(prev => {
+      const next = prev.map((v, j) => j === i ? !v : v);
+      localStorage.setItem('privacyState', JSON.stringify(next));
+      return next;
+    });
   };
 
   const recentAppointments = [
-    { doctor: 'Dr. Youssef Alami', specialty: 'Dentiste',     date: '15 Jan 2025', status: 'Terminé',  rating: 5 },
-    { doctor: 'Dr. Sara Bennis',   specialty: 'Cardiologue',   date: '3 Fév 2025',  status: 'Confirmé', rating: null },
-    { doctor: 'Dr. Ahmed Tazi',    specialty: 'Psychologue',   date: '28 Déc 2024', status: 'Terminé',  rating: 4 },
+    { doctor: 'Dr. Youssef Alami', specialty: 'Dentiste',   date: '15 Jan 2025', status: 'Terminé',  rating: 5 },
+    { doctor: 'Dr. Sara Bennis',   specialty: 'Cardiologue', date: '3 Fév 2025',  status: 'Confirmé', rating: null },
+    { doctor: 'Dr. Ahmed Tazi',    specialty: 'Psychologue', date: '28 Déc 2024', status: 'Terminé',  rating: 4 },
   ];
 
   const settingsTabs = [
-    { id: 'info',          label: 'Informations',    icon: User     },
-    { id: 'password',      label: 'Mot de passe',    icon: Lock     },
-    { id: 'notifications', label: 'Notifications',   icon: Bell     },
-    { id: 'privacy',       label: 'Confidentialité', icon: Shield   },
+    { id: 'info',          label: 'Informations',    icon: User   },
+    { id: 'password',      label: 'Mot de passe',    icon: Lock   },
+    { id: 'notifications', label: 'Notifications',   icon: Bell   },
+    { id: 'privacy',       label: 'Confidentialité', icon: Shield },
   ];
 
   const profileSidebarLinks = [
-    { id: 'profile'  as ProfilePage, label: 'Mon Profil',            icon: User     },
-    { id: 'settings' as ProfilePage, label: 'Paramètres du compte',  icon: Settings },
+    { id: 'profile'  as ProfilePage, label: 'Mon Profil',           icon: User     },
+    { id: 'settings' as ProfilePage, label: 'Paramètres du compte', icon: Settings },
   ];
 
   const notifItems = [
-    { label: 'Rappels de rendez-vous', desc: 'Rappels 24h avant votre rendez-vous'  },
-    { label: 'Confirmations',          desc: 'Confirmer ou refuser les demandes'     },
-    { label: 'Offres et promotions',   desc: 'Recevez les meilleures offres'         },
-    { label: 'Nouveaux spécialistes',  desc: 'Dans votre secteur d\'activité'        },
-    { label: 'Résumé hebdomadaire',    desc: 'Un récapitulatif de vos activités'     },
+    { label: 'Rappels de rendez-vous', desc: 'Rappels 24h avant votre rendez-vous' },
+    { label: 'Confirmations',          desc: 'Confirmer ou refuser les demandes'    },
+    { label: 'Offres et promotions',   desc: 'Recevez les meilleures offres'        },
+    { label: 'Nouveaux spécialistes',  desc: "Dans votre secteur d'activité"        },
+    { label: 'Résumé hebdomadaire',    desc: 'Un récapitulatif de vos activités'    },
   ];
 
   const privacyItems = [
-    { label: 'Profil public',         desc: 'Permettre aux autres de voir votre profil' },
-    { label: 'Afficher l\'historique', desc: 'Montrer vos rendez-vous précédents'        },
-    { label: 'Partage de données',    desc: 'Améliorer l\'expérience Bookify'            },
+    { label: 'Profil public',          desc: 'Permettre aux autres de voir votre profil' },
+    { label: "Afficher l'historique",  desc: 'Montrer vos rendez-vous précédents'        },
+    { label: 'Partage de données',     desc: "Améliorer l'expérience Bookify"            },
   ];
 
   return (
@@ -116,157 +248,104 @@ const Profils: React.FC = () => {
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
         * { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
 
-        @keyframes slideInUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideInRight {
-          from { opacity: 0; transform: translateX(30px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; } to { opacity: 1; }
-        }
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes pop {
-          0%  { transform: scale(0.92); opacity: 0; }
-          60% { transform: scale(1.04); }
-          100%{ transform: scale(1);    opacity: 1; }
-        }
+        @keyframes slideInUp   { from { opacity:0; transform:translateY(30px) }  to { opacity:1; transform:translateY(0) } }
+        @keyframes slideInRight{ from { opacity:0; transform:translateX(30px) }  to { opacity:1; transform:translateX(0) } }
+        @keyframes fadeIn      { from { opacity:0 } to { opacity:1 } }
+        @keyframes fadeUp      { from { opacity:0; transform:translateY(16px) }  to { opacity:1; transform:translateY(0) } }
+        @keyframes pop         { 0%{transform:scale(.92);opacity:0} 60%{transform:scale(1.04)} 100%{transform:scale(1);opacity:1} }
 
-        .sidebar-overlay { animation: fadeIn 0.3s ease-out forwards; }
-        .anim-fade-up    { animation: fadeUp 0.5s cubic-bezier(.16,1,.3,1) both; }
-        .anim-fade-in    { animation: fadeIn 0.4s ease both; }
-        .anim-slide-in   { animation: slideInRight 0.4s cubic-bezier(.16,1,.3,1) both; }
-        .anim-pop        { animation: pop 0.4s cubic-bezier(.16,1,.3,1) both; }
+        .sidebar-overlay { animation: fadeIn .3s ease-out forwards; }
+        .anim-fade-up    { animation: fadeUp .5s cubic-bezier(.16,1,.3,1) both; }
+        .anim-fade-in    { animation: fadeIn .4s ease both; }
+        .anim-slide-in   { animation: slideInRight .4s cubic-bezier(.16,1,.3,1) both; }
+        .anim-pop        { animation: pop .4s cubic-bezier(.16,1,.3,1) both; }
 
-        .card {
-          background: #fff;
-          border-radius: 16px;
-          border: 1px solid #e5e7eb;
-        }
+        .card { background:#fff; border-radius:16px; border:1px solid #e5e7eb; }
 
         .input-field {
-          width: 100%; padding: 11px 14px;
-          border: 1.5px solid #e5e7eb; border-radius: 10px;
-          font-size: 14px; outline: none; background: #fafafa;
-          transition: border-color .2s, box-shadow .2s;
+          width:100%; padding:11px 14px;
+          border:1.5px solid #e5e7eb; border-radius:10px;
+          font-size:14px; outline:none; background:#fafafa;
+          transition:border-color .2s, box-shadow .2s;
         }
-        .input-field:focus  { border-color: #0059B2; box-shadow: 0 0 0 3px rgba(37,99,235,.12); background: #fff; }
-        .input-field:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
+        .input-field:focus    { border-color:#0059B2; box-shadow:0 0 0 3px rgba(37,99,235,.12); background:#fff; }
+        .input-field:disabled { background:#f3f4f6; color:#9ca3af; cursor:not-allowed; }
 
         .btn-primary {
-          padding: 9px 20px; background: #0059B2; color: #fff;
-          border-radius: 10px; font-weight: 600; font-size: 14px;
-          border: none; cursor: pointer; transition: all .2s;
-          display: inline-flex; align-items: center; gap: 6px;
+          padding:9px 20px; background:#0059B2; color:#fff;
+          border-radius:10px; font-weight:600; font-size:14px;
+          border:none; cursor:pointer; transition:all .2s;
+          display:inline-flex; align-items:center; gap:6px;
         }
-        .btn-primary:hover { background: #0059B2; box-shadow: 0 4px 12px rgba(37,99,235,.3); }
+        .btn-primary:hover:not(:disabled) { background:#004a99; box-shadow:0 4px 12px rgba(37,99,235,.3); }
+        .btn-primary:disabled { opacity:.65; cursor:not-allowed; }
 
         .btn-ghost {
-          padding: 9px 20px; background: transparent; color: #6b7280;
-          border-radius: 10px; font-weight: 600; font-size: 14px;
-          border: 1.5px solid #e5e7eb; cursor: pointer; transition: all .2s;
-          display: inline-flex; align-items: center; gap: 6px;
+          padding:9px 20px; background:transparent; color:#6b7280;
+          border-radius:10px; font-weight:600; font-size:14px;
+          border:1.5px solid #e5e7eb; cursor:pointer; transition:all .2s;
+          display:inline-flex; align-items:center; gap:6px;
         }
-        .btn-ghost:hover { background: #f3f4f6; color: #374151; }
+        .btn-ghost:hover { background:#f3f4f6; color:#374151; }
 
         .prof-nav {
-          display: flex; align-items: center; gap: 10px; padding: 10px 14px;
-          border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer;
-          transition: all .2s; color: #6b7280; border: none; background: none;
-          width: 100%; text-align: left;
+          display:flex; align-items:center; gap:10px; padding:10px 14px;
+          border-radius:10px; font-size:14px; font-weight:500; cursor:pointer;
+          transition:all .2s; color:#6b7280; border:none; background:none;
+          width:100%; text-align:left;
         }
-        .prof-nav:hover          { background: #f3f4f6; color: #111827; }
-        .prof-nav.active         { background: #eff6ff; color: #0059B2; font-weight: 600; }
+        .prof-nav:hover   { background:#f3f4f6; color:#111827; }
+        .prof-nav.active  { background:#eff6ff; color:#0059B2; font-weight:600; }
 
         .settings-tab {
-          display: flex; align-items: center; gap: 10px; padding: 10px 14px;
-          border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer;
-          transition: all .2s; color: #6b7280; border: none; background: none;
-          width: 100%; text-align: left;
+          display:flex; align-items:center; gap:10px; padding:10px 14px;
+          border-radius:10px; font-size:14px; font-weight:500; cursor:pointer;
+          transition:all .2s; color:#6b7280; border:none; background:none;
+          width:100%; text-align:left;
         }
-        .settings-tab:hover  { background: #f3f4f6; color: #111827; }
-        .settings-tab.active { background: #eff6ff; color: #0059B2; font-weight: 600; }
+        .settings-tab:hover  { background:#f3f4f6; color:#111827; }
+        .settings-tab.active { background:#eff6ff; color:#0059B2; font-weight:600; }
 
-        .toggle-track {
-          width: 44px; height: 24px; border-radius: 12px; position: relative;
-          cursor: pointer; border: none; transition: background .2s; flex-shrink: 0;
-        }
-        .toggle-thumb {
-          position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
-          background: #fff; border-radius: 50%; transition: transform .2s;
-          box-shadow: 0 1px 4px rgba(0,0,0,.2);
-        }
-        .toggle-on  { background: #0059B2; }
-        .toggle-off { background: #d1d5db; }
-        .toggle-on  .toggle-thumb { transform: translateX(20px); }
+        .toggle-track { width:44px; height:24px; border-radius:12px; position:relative; cursor:pointer; border:none; transition:background .2s; flex-shrink:0; }
+        .toggle-thumb { position:absolute; top:2px; left:2px; width:20px; height:20px; background:#fff; border-radius:50%; transition:transform .2s; box-shadow:0 1px 4px rgba(0,0,0,.2); }
+        .toggle-on  { background:#0059B2; }
+        .toggle-off { background:#d1d5db; }
+        .toggle-on .toggle-thumb { transform:translateX(20px); }
 
         .avatar-ring {
-          width: 88px; height: 88px; border-radius: 50%;
-          background: linear-gradient(135deg, #0059B2, #1A6FD1);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 32px; font-weight: 700; color: #fff;
-          box-shadow: 0 0 0 4px #fff, 0 0 0 6px #e5e7eb;
+          width:88px; height:88px; border-radius:50%;
+          background:linear-gradient(135deg,#0059B2,#1A6FD1);
+          display:flex; align-items:center; justify-content:center;
+          font-size:32px; font-weight:700; color:#fff;
+          box-shadow:0 0 0 4px #fff, 0 0 0 6px #e5e7eb;
         }
 
-        .status-done    { background: #d1fae5; color: #065f46; }
-        .status-confirm { background: #dbeafe; color: #0059B2; }
-        .status-badge {
-          display: inline-flex; align-items: center;
-          padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
-        }
+        .status-done    { background:#d1fae5; color:#065f46; }
+        .status-confirm { background:#dbeafe; color:#0059B2; }
+        .status-badge   { display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; }
 
-        .star-filled { color: #f59e0b; fill: #f59e0b; }
-        .star-empty  { color: #d1d5db; }
+        .star-filled { color:#f59e0b; fill:#f59e0b; }
+        .star-empty  { color:#d1d5db; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; }
       `}</style>
 
-      {/* Mobile Overlay */}
       {isSidebarOpen && (
-        <div 
-          className="sidebar-overlay fixed inset-0 bg-black bg-opacity-50 z-40 "
-          onClick={() => setIsSidebarOpen(false)}
-        />
+        <div className="sidebar-overlay fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setIsSidebarOpen(false)} />
       )}
 
-      {/* Sidebar Navigation */}
-      <div className={`fixed left-0 top-0 h-full w-64 bg-white transform transition-transform duration-300 z-50 ${
-        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
-
-        <Navbar
-          activeSection={activeSection}
-          onSectionChange={(section) => {
-            setActiveSection(section);
-            setIsSidebarOpen(false);
-          }}
-        />
+      <div className={`fixed left-0 top-0 h-full w-64 bg-white transform transition-transform duration-300 z-50 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <Navbar activeSection={activeSection} onSectionChange={(section) => { setActiveSection(section); setIsSidebarOpen(false); }} />
       </div>
 
-       {/* Main Content */}
-      <main
-          className={`
-            min-h-screen transition-all duration-300
-            lg:${isSidebarOpen ? 'ml-64' : 'ml-0'}
-          `}
-        >
+      <main className={`min-h-screen transition-all duration-300 lg:${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+        <TopBar userName={userName} onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)} isMobileMenuOpen={isSidebarOpen} />
 
-        {/* Top Bar */}
-        <TopBar 
-          userName={userName}
-          onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-          isMobileMenuOpen={isSidebarOpen}
-        />
-
-        {/* ── Page Content ── */}
         <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col lg:flex-row gap-6">
 
-          {/* ════ INNER LEFT SIDEBAR (profile nav) ════ */}
+          {/* ════ LEFT SIDEBAR ════ */}
           <aside className="w-full lg:w-60 shrink-0 anim-slide-in">
-            {/* Avatar */}
             <div className="card p-5 mb-4 text-center">
               <div className="flex justify-center mb-3">
                 <div className="relative">
@@ -280,16 +359,11 @@ const Profils: React.FC = () => {
               <p className="text-xs text-gray-500 mt-0.5 truncate">{userData.email}</p>
             </div>
 
-            {/* Nav links */}
             <div className="card p-3 mb-4">
               {profileSidebarLinks.map(link => {
                 const Icon = link.icon;
                 return (
-                  <button
-                    key={link.id}
-                    onClick={() => setCurrentPage(link.id)}
-                    className={`prof-nav ${currentPage === link.id ? 'active' : ''}`}
-                  >
+                  <button key={link.id} onClick={() => setCurrentPage(link.id)} className={`prof-nav ${currentPage === link.id ? 'active' : ''}`}>
                     <Icon size={16} />
                     <span className="flex-1 text-left">{link.label}</span>
                     {currentPage === link.id && <ChevronRight size={14} />}
@@ -297,29 +371,16 @@ const Profils: React.FC = () => {
                 );
               })}
               <div className="my-1.5 border-t border-gray-100" />
-              <button className="prof-nav">
-                <HelpCircle size={16} /> Aide
-              </button>
-              <button
-                className="prof-nav"
-                style={{ color: '#ef4444' }}
-                onClick={() => {
-                  localStorage.removeItem("user");
-                  window.location.href = "/login";
-                }}
-                >
+              <button className="prof-nav"><HelpCircle size={16} /> Aide</button>
+              <button className="prof-nav" style={{ color: '#ef4444' }}
+                onClick={() => { localStorage.removeItem('user'); window.location.href = '/login'; }}>
                 <LogOut size={16} style={{ color: '#ef4444' }} /> Déconnexion
               </button>
             </div>
 
-            {/* Stats */}
             <div className="card p-4">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Activité</p>
-              {[
-                { label: 'Rendez-vous', value: '12' },
-                { label: 'Avis laissés',  value: '7'  },
-                { label: 'Favoris',       value: '4'  },
-              ].map(s => (
+              {[{ label: 'Rendez-vous', value: '12' }, { label: 'Avis laissés', value: '7' }, { label: 'Favoris', value: '4' }].map(s => (
                 <div key={s.label} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                   <span className="text-sm text-gray-600">{s.label}</span>
                   <span className="text-sm font-bold text-gray-900">{s.value}</span>
@@ -328,10 +389,10 @@ const Profils: React.FC = () => {
             </div>
           </aside>
 
-          {/* ════ MAIN CONTENT AREA ════ */}
+          {/* ════ MAIN CONTENT ════ */}
           <section className="flex-1 min-w-0">
 
-            {/* ─────────── PROFILE PAGE ─────────── */}
+            {/* ─── PROFILE PAGE ─── */}
             {currentPage === 'profile' && (
               <div className="anim-fade-up">
                 <div className="flex items-center justify-between mb-6">
@@ -339,15 +400,11 @@ const Profils: React.FC = () => {
                     <h1 className="text-xl font-bold text-gray-900">Mon Profil</h1>
                     <p className="text-sm text-gray-500 mt-0.5">Gérez vos informations personnelles</p>
                   </div>
-                  <button
-                    className="btn-primary"
-                    onClick={() => { setCurrentPage('settings'); setActiveSettingsTab('info'); }}
-                  >
+                  <button className="btn-primary" onClick={() => { setCurrentPage('settings'); setActiveSettingsTab('info'); }}>
                     <Edit3 size={14} /> Modifier
                   </button>
                 </div>
 
-                {/* Personal info card */}
                 <div className="card p-6 mb-5">
                   <h2 className="text-sm font-bold text-gray-900 mb-5 flex items-center gap-2">
                     <User size={16} className="text-[#0059B2]" /> Informations personnelles
@@ -367,7 +424,7 @@ const Profils: React.FC = () => {
                           </div>
                           <div>
                             <p className="text-xs text-gray-400 font-medium mb-0.5">{item.label}</p>
-                            <p className="text-sm font-semibold text-gray-900">{item.value}</p>
+                            <p className="text-sm font-semibold text-gray-900">{item.value || '—'}</p>
                           </div>
                         </div>
                       );
@@ -381,7 +438,6 @@ const Profils: React.FC = () => {
                   )}
                 </div>
 
-                {/* Recent appointments */}
                 <div className="card p-6">
                   <div className="flex items-center justify-between mb-5">
                     <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
@@ -405,9 +461,7 @@ const Profils: React.FC = () => {
                           </span>
                           {appt.rating && (
                             <div className="flex gap-0.5 justify-end mt-1">
-                              {[1,2,3,4,5].map(s => (
-                                <Star key={s} size={10} className={s <= appt.rating! ? 'star-filled' : 'star-empty'} />
-                              ))}
+                              {[1,2,3,4,5].map(s => <Star key={s} size={10} className={s <= appt.rating! ? 'star-filled' : 'star-empty'} />)}
                             </div>
                           )}
                         </div>
@@ -418,7 +472,7 @@ const Profils: React.FC = () => {
               </div>
             )}
 
-            {/* ─────────── SETTINGS PAGE ─────────── */}
+            {/* ─── SETTINGS PAGE ─── */}
             {currentPage === 'settings' && (
               <div className="anim-fade-up">
                 <div className="mb-6">
@@ -426,10 +480,17 @@ const Profils: React.FC = () => {
                   <p className="text-sm text-gray-500 mt-0.5">Gérez vos préférences et sécurité</p>
                 </div>
 
-                {/* Toast success */}
+                {/* ── Toast: success ── */}
                 {saved && (
                   <div className="mb-4 flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm font-semibold px-4 py-3 rounded-xl anim-pop">
                     <Check size={15} /> Modifications enregistrées avec succès !
+                  </div>
+                )}
+
+                {/* ── Toast: error ── */}
+                {saveError && (
+                  <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold px-4 py-3 rounded-xl anim-pop">
+                    <AlertCircle size={15} /> {saveError}
                   </div>
                 )}
 
@@ -439,18 +500,14 @@ const Profils: React.FC = () => {
                     {settingsTabs.map(tab => {
                       const Icon = tab.icon;
                       return (
-                        <button
-                          key={tab.id}
-                          onClick={() => setActiveSettingsTab(tab.id)}
-                          className={`settings-tab ${activeSettingsTab === tab.id ? 'active' : ''}`}
-                        >
+                        <button key={tab.id} onClick={() => setActiveSettingsTab(tab.id)}
+                          className={`settings-tab ${activeSettingsTab === tab.id ? 'active' : ''}`}>
                           <Icon size={15} /> {tab.label}
                         </button>
                       );
                     })}
                   </div>
 
-                  {/* Tab content */}
                   <div className="flex-1 min-w-0">
 
                     {/* Info tab */}
@@ -464,11 +521,14 @@ const Profils: React.FC = () => {
                             </button>
                           ) : (
                             <div className="flex gap-2">
-                              <button className="btn-ghost" onClick={handleCancel}>
+                              <button className="btn-ghost" onClick={handleCancel} disabled={isSaving}>
                                 <X size={13} /> Annuler
                               </button>
-                              <button className="btn-primary" onClick={handleSave}>
-                                <Check size={13} /> Enregistrer
+                              <button className="btn-primary" onClick={handleSave} disabled={isSaving}>
+                                {isSaving
+                                  ? <><Loader2 size={13} className="spin" /> Enregistrement...</>
+                                  : <><Check size={13} /> Enregistrer</>
+                                }
                               </button>
                             </div>
                           )}
@@ -500,8 +560,8 @@ const Profils: React.FC = () => {
                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Email</label>
-                            <input className="input-field" type="email" value={formData.email} disabled={!isEditing}
-                              onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} />
+                            <input className="input-field" type="email" value={formData.email} disabled
+                              title="L'email ne peut pas être modifié ici" />
                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Téléphone</label>
@@ -526,21 +586,70 @@ const Profils: React.FC = () => {
                     {activeSettingsTab === 'password' && (
                       <div className="card p-6 anim-fade-in">
                         <h2 className="text-sm font-bold text-gray-900 mb-5">Changer le mot de passe</h2>
+
+                        {pwSuccess && (
+                          <div className="mb-4 flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm font-semibold px-4 py-3 rounded-xl anim-pop">
+                            <Check size={15} /> Mot de passe modifié avec succès !
+                          </div>
+                        )}
+                        {pwError && (
+                          <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold px-4 py-3 rounded-xl anim-pop">
+                            <AlertCircle size={15} /> {pwError}
+                          </div>
+                        )}
+
                         <div className="space-y-4 max-w-sm">
-                          {['Mot de passe actuel', 'Nouveau mot de passe', 'Confirmer mot de passe'].map((label, i) => (
-                            <div key={i}>
+                          {([
+                            { label: 'Mot de passe actuel',   key: 'current' },
+                            { label: 'Nouveau mot de passe',  key: 'next'    },
+                            { label: 'Confirmer mot de passe', key: 'confirm' },
+                          ] as { label: string; key: 'current' | 'next' | 'confirm' }[]).map(({ label, key }) => (
+                            <div key={key}>
                               <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
                               <div className="relative">
-                                <input type={showPassword ? 'text' : 'password'} placeholder="••••••••" className="input-field pr-10" />
-                                <button type="button" onClick={() => setShowPassword(p => !p)}
+                                <input
+                                  type={showPwFields[key] ? 'text' : 'password'}
+                                  placeholder="••••••••"
+                                  className="input-field pr-10"
+                                  value={pwForm[key]}
+                                  onChange={e => setPwForm(p => ({ ...p, [key]: e.target.value }))}
+                                />
+                                <button type="button"
+                                  onClick={() => setShowPwFields(p => ({ ...p, [key]: !p[key] }))}
                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                                  {showPwFields[key] ? <EyeOff size={15} /> : <Eye size={15} />}
                                 </button>
                               </div>
                             </div>
                           ))}
-                          <button className="btn-primary w-full justify-center mt-1">
-                            Mettre à jour le mot de passe
+
+                          {/* Password strength indicator */}
+                          {pwForm.next && (
+                            <div>
+                              <div className="flex gap-1 mb-1">
+                                {[1,2,3,4].map(level => {
+                                  const strength =
+                                    pwForm.next.length >= 12 && /[A-Z]/.test(pwForm.next) && /[0-9]/.test(pwForm.next) && /[^a-zA-Z0-9]/.test(pwForm.next) ? 4 :
+                                    pwForm.next.length >= 10 && /[A-Z]/.test(pwForm.next) && /[0-9]/.test(pwForm.next) ? 3 :
+                                    pwForm.next.length >= 8 ? 2 : 1;
+                                  const colors = ['', '#ef4444','#f59e0b','#3b82f6','#22c55e'];
+                                  return <div key={level} className="h-1 flex-1 rounded-full transition-all" style={{ background: level <= strength ? colors[strength] : '#e5e7eb' }} />;
+                                })}
+                              </div>
+                              <p className="text-xs text-gray-400">
+                                {pwForm.next.length < 8 ? 'Trop court' :
+                                 pwForm.next.length < 10 ? 'Faible' :
+                                 /[A-Z]/.test(pwForm.next) && /[0-9]/.test(pwForm.next) && /[^a-zA-Z0-9]/.test(pwForm.next) ? 'Très fort' :
+                                 /[A-Z]/.test(pwForm.next) && /[0-9]/.test(pwForm.next) ? 'Fort' : 'Moyen'}
+                              </p>
+                            </div>
+                          )}
+
+                          <button className="btn-primary w-full justify-center mt-1" onClick={handleChangePassword} disabled={isSavingPw}>
+                            {isSavingPw
+                              ? <><Loader2 size={13} className="spin" /> Modification...</>
+                              : <><Check size={13} /> Mettre à jour le mot de passe</>
+                            }
                           </button>
                         </div>
                       </div>
@@ -557,10 +666,8 @@ const Profils: React.FC = () => {
                                 <p className="text-sm font-semibold text-gray-900">{item.label}</p>
                                 <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
                               </div>
-                              <button
-                                onClick={() => setNotifState(prev => prev.map((v, j) => j === i ? !v : v))}
-                                className={`toggle-track ${notifState[i] ? 'toggle-on' : 'toggle-off'}`}
-                              >
+                              <button onClick={() => handleNotifToggle(i)}
+                                className={`toggle-track ${notifState[i] ? 'toggle-on' : 'toggle-off'}`}>
                                 <div className="toggle-thumb" />
                               </button>
                             </div>
@@ -580,10 +687,8 @@ const Profils: React.FC = () => {
                                 <p className="text-sm font-semibold text-gray-900">{item.label}</p>
                                 <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
                               </div>
-                              <button
-                                onClick={() => setPrivacyState(prev => prev.map((v, j) => j === i ? !v : v))}
-                                className={`toggle-track ${privacyState[i] ? 'toggle-on' : 'toggle-off'}`}
-                              >
+                              <button onClick={() => handlePrivacyToggle(i)}
+                                className={`toggle-track ${privacyState[i] ? 'toggle-on' : 'toggle-off'}`}>
                                 <div className="toggle-thumb" />
                               </button>
                             </div>
@@ -597,13 +702,14 @@ const Profils: React.FC = () => {
                         </div>
                       </div>
                     )}
+
                   </div>
                 </div>
               </div>
             )}
           </section>
         </div>
-        <Footer/>
+        <Footer />
       </main>
     </div>
   );
