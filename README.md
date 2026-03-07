@@ -18,7 +18,7 @@ Clean, modular, production-ready structure with ESLint and best practices.
 
 ## Installation
 ```bash
-git clone https://github.com/USERNAME/bookify-frontend.git
+git clone https://github.com/tahv7x/bookify-frontend.git
 cd bookify-frontend
 npm install
 npm run dev
