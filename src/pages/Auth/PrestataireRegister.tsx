@@ -140,7 +140,7 @@ const PrestataireRegister: React.FC = () => {
     <div className="min-h-screen relative overflow-hidden  flex justify-center items-start md:items-center pt-32 md:pt-0 transition-all duration-500 ease-out">
       {/* Logo - Top Left */}
       <div className="absolute top-[50px] right-5 z-20">
-        <Link to="/">
+        <Link to="/Home-Provider">
           <img
             src={logo}
             alt="Logo"

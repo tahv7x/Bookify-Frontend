@@ -12,6 +12,9 @@ import MesRendezVous from "../pages/Client/MesRendezVous";
 import Profils from "../pages/Client/Profils";
 import ServiceProviders from "../components/Client/ServiceProviders";
 import ServiceProviderProfile from "../components/Client/ProviderProfile";
+import HomeP from "../pages/Provider/Home";
+import DashboardProvider from "../pages/Provider/Dashboard";
+import ProfilsP from "../pages/Provider/Profils";
 
 const AppRoutes = () => (
   <Routes>
@@ -28,6 +31,9 @@ const AppRoutes = () => (
     <Route path="/Profils" element={<Profils />} />
     <Route path="/Service-Providers/:serviceName" element={<ServiceProviders />} />
     <Route path="/Service-Provider-Profile/:providerId" element={<ServiceProviderProfile />} />
+    <Route path="/Home-Provider" element={<HomeP />} />
+    <Route path="/Dashboard-Provider" element={<DashboardProvider />} />
+    <Route path="/Profils-Provider" element={<ProfilsP />} />
   </Routes>
 );
 
