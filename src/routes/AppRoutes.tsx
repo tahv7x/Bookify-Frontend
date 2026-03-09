@@ -10,6 +10,8 @@ import DashboardClient from "../pages/Client/Dashboard";
 import HomeC from "../pages/Client/Home";
 import MesRendezVous from "../pages/Client/MesRendezVous";
 import Profils from "../pages/Client/Profils";
+import ServiceProviders from "../components/Client/ServiceProviders";
+import ServiceProviderProfile from "../components/Client/ProviderProfile";
 
 const AppRoutes = () => (
   <Routes>
@@ -24,6 +26,8 @@ const AppRoutes = () => (
     <Route path="/Home-Client" element={<HomeC />} />
     <Route path="/Mes-Rendez-Vous" element={<MesRendezVous />} />
     <Route path="/Profils" element={<Profils />} />
+    <Route path="/Service-Providers/:serviceName" element={<ServiceProviders />} />
+    <Route path="/Service-Provider-Profile/:providerId" element={<ServiceProviderProfile />} />
   </Routes>
 );
 

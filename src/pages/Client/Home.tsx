@@ -3,6 +3,7 @@ import { Hospital, Sparkles, Briefcase, Wrench, Calendar, Shield, Star, ChevronR
 import Navbar from '../../components/Client/Navbar';
 import TopBar from '../../components/Client/TopBar';
 import Footer from '../../components/Client/Footer';
+import { useNavigate } from 'react-router-dom';
 
 const Home: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -10,6 +11,8 @@ const Home: React.FC = () => {
   const [, setIsScrolled] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('Tous');
   const [userName, setUserName] = useState('');
+  const navigate = useNavigate();
+
 
   useEffect(() => { const h=()=>setIsScrolled(window.scrollY>20); window.addEventListener('scroll',h); return()=>window.removeEventListener('scroll',h); }, []);
   const scrollToSection=(id:string)=>{ const s=document.getElementById(id); if(s){const y=s.getBoundingClientRect().top+window.pageYOffset-100; window.scrollTo({top:y,behavior:"smooth"});} };
@@ -18,7 +21,7 @@ const Home: React.FC = () => {
 
   const servicesData: {[k:string]:Array<{title:string;img:string}>} = {
     'Sante & medical':[{title:'Médecin généraliste',img:'https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=600&h=400&fit=crop'},{title:'Dentiste',img:'https://images.unsplash.com/photo-1598256989800-fe5f95da9787?w=600&h=400&fit=crop'},{title:'Psychologue',img:'https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=600&h=400&fit=crop'},{title:'Vétérinaire',img:'https://images.unsplash.com/photo-1628009368231-7bb7cfcb0def?w=600&h=400&fit=crop'}],
-    'Beaute & Bien etre':[{title:'Coiffeur / Barbier',img:'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&h=400&fit=crop'},{title:'Maquilleur',img:'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=600&h=400&fit=crop'},{title:'Prothésiste ongulaire',img:'https://images.unsplash.com/photo-1610992015732-2449b76344bc?w=600&h=400&fit=crop'}],
+    'Beaute & Bien etre':[{title:'Coiffeur & Barbier',img:'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&h=400&fit=crop'},{title:'Maquilleur',img:'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=600&h=400&fit=crop'},{title:'Prothésiste ongulaire',img:'https://images.unsplash.com/photo-1610992015732-2449b76344bc?w=600&h=400&fit=crop'}],
     'Services profesionnels':[{title:'Avocat',img:'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=600&h=400&fit=crop'},{title:'Consultant',img:'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=600&h=400&fit=crop'},{title:'Coach',img:'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=600&h=400&fit=crop'}],
     'Service techniques':[{title:'Mecanicien',img:'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&h=400&fit=crop'},{title:'Plombier',img:'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=600&h=400&fit=crop'},{title:'Électricien',img:'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=600&h=400&fit=crop'},{title:'Nettoyage',img:'https://images.unsplash.com/photo-1628177142898-93e36e4e3a50?w=600&h=400&fit=crop'}],
   };
@@ -117,8 +120,16 @@ const Home: React.FC = () => {
           <div className="max-w-7xl mx-auto">
             <div key={selectedCategory} className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
               {servicesData[selectedCategory]?.map((service,idx)=>(
-                <div key={idx} className="group relative overflow-hidden rounded-2xl sm:rounded-3xl cursor-pointer transform transition-all duration-500 hover:-translate-y-3 hover:scale-[1.03] active:scale-95"
-                  style={{opacity:0,animation:'fadeInUp .6s cubic-bezier(.16,1,.3,1) forwards',animationDelay:`${idx*.15}s`}}>
+                <div
+                  key={idx}
+                  onClick={() => navigate(`/Service-Providers/${service.title}`)}
+                  className="group relative overflow-hidden rounded-2xl sm:rounded-3xl cursor-pointer transform transition-all duration-500 hover:-translate-y-3 hover:scale-[1.03] active:scale-95"
+                  style={{
+                    opacity: 0,
+                    animation: 'fadeInUp .6s cubic-bezier(.16,1,.3,1) forwards',
+                    animationDelay: `${idx * .15}s`
+                  }}
+                >
                   <div className="aspect-[4/3] relative">
                     <img src={service.img} alt={service.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"/>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-80 group-hover:opacity-100 transition-all duration-500"/>

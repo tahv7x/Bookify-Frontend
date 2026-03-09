@@ -14,7 +14,7 @@ const Login: React.FC = () => {
     const role = JSON.parse(user).role;
     if(role === "ADMIN") navigate("/Admin/Accueil");
     else if (role === "PRESTATAIRE") navigate("/Prestataire/Accueil");
-    else if (role === "CLIENT")  navigate("/Dashboard-Client");;
+    else if (role === "CLIENT")  navigate("/Home-Client");;
     }
     },[]);
     const [errorMessage, setErrorMessage] = useState("");
