@@ -262,7 +262,7 @@ const TopBar: React.FC<TopBarProps> = ({
                     className="w-full text-left px-4 py-2.5 flex items-center gap-3 text-sm text-gray-700 dark:text-dark-text font-medium hover:bg-gray-50 dark:hover:bg-dark-border transition-colors"
                   >
                     <User size={16} className="text-gray-500 dark:text-dark-muted" />
-                    Profile
+                    Profil
                   </button>
                 </div>
 
@@ -275,9 +275,9 @@ const TopBar: React.FC<TopBarProps> = ({
                       navigate('/login');
                     }}
                     className="w-full text-left px-4 py-2.5 flex items-center gap-3 text-sm text-gray-700 dark:text-dark-text font-medium hover:bg-gray-50 dark:hover:bg-dark-border transition-colors"
-                  >
-                    <LogOut size={16} className="text-gray-500 dark:text-dark-muted" />
-                    Log out
+                  style={{color:"#ef4444"}}>
+                    <LogOut size={16} className = "color"style={{color:'#ef4444'}}/>
+                    Déconnexion
                   </button>
                 </div>
               </div>

@@ -16,9 +16,9 @@ const steps = [
     icon: Search,
     color: '#0059B2',
     bgColor: 'rgba(0,89,178,0.10)',
-    title: 'Recherchez un spécialiste',
+    title: 'Recherchez un catégorie',
     subtitle: 'Trouvez le bon professionnel',
-    description: 'Utilisez la barre de recherche pour trouver un médecin, dentiste, psychologue ou tout autre spécialiste près de chez vous.',
+    description: 'Utilisez la barre de recherche pour trouver les Bonnes Offres.',
     tips: [
       { icon: MapPin, text: 'Filtrez par ville ou quartier' },
       { icon: Star, text: 'Consultez les avis et notes des patients' },
@@ -32,7 +32,7 @@ const steps = [
           <div style={{ marginLeft: 'auto', background: '#0059B2', color: '#fff', borderRadius: 7, padding: '4px 12px', fontSize: 12, fontWeight: 600 }}>Chercher</div>
         </div>
         <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 7 }}>
-          {['Dr. Youssef Alami · Dentiste ⭐4.9', 'Dr. Sara Bennis · Cardiologue ⭐4.7'].map((item, i) => (
+          {['Dr. Youssef Alami · Dentiste ⭐4.9', 'Dr. Sara Bennis · Dentiste ⭐4.7'].map((item, i) => (
             <div key={i} style={{ background: '#fff', borderRadius: 9, padding: '9px 12px', fontSize: 12, color: '#374151', border: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,#0059B2,#1A6FD1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
                 {item.charAt(3)}
@@ -93,7 +93,6 @@ const steps = [
     description: 'Vérifiez vos informations personnelles avant de confirmer. Votre profil est rempli automatiquement depuis votre compte.',
     tips: [
       { icon: UserCheck, text: 'Données pré-remplies depuis votre compte' },
-      { icon: CreditCard, text: 'Ajoutez une note ou motif de consultation' },
       { icon: CheckCircle2, text: 'Relisez avant de valider' },
     ],
     visual: (

@@ -95,8 +95,8 @@ const MesRendezVous: React.FC = () => {
           {/* HEADER */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 anim-up">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-dark-text">Mes Rendez-vous</h1>
-              <p className="text-sm text-gray-500 dark:text-dark-muted mt-0.5">Gérez et suivez tous vos rendez-vous médicaux</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-dark-text">Gérez Votre Rendez-vous</h1>
+              <p className="text-sm text-gray-500 dark:text-dark-muted mt-0.5">Gérez et suivez tous vos rendez-vous</p>
             </div>
             <button onClick={()=>navigate('/Home-Client')} className="flex items-center gap-2 bg-[#0059B2] hover:bg-[#004a99] text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg shrink-0">
               <Plus size={15}/>Nouveau RDV
