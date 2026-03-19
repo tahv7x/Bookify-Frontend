@@ -1,8 +1,11 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import logo from "../../assets/LogoB.png";
+import logo from "../../assets/LogoW.png";
 import { useNavigate } from "react-router-dom";
 import { registerPrestataire } from "../../services/Auth/authRegisterPrestataireService";
+import AuthBackground from "../../components/AuthBackground";
+import {getStats} from "../../services/provider/getStats";
+import { getUpcoming } from "../../services/provider/upComing";
 
 const ADRESSES_AUTORISEES = [
   "Casablanca",
@@ -22,12 +25,16 @@ const PrestataireRegister: React.FC = () => {
     password: "",
     confirmPassword: "",
   });
-
+  const [successMessage, setSuccessMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const navigate = useNavigate();
-
+  const [stats,setStats] = useState({
+    revenus:0,
+    rdvToday:0,
+  })
+  const [upcoming,setUpcoming] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -42,7 +49,11 @@ const PrestataireRegister: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
+    if(formData.nomComplet === "" || formData.email === "" || formData.telephone === "" || formData.address === "" || formData.password === "" || formData.confirmPassword === ""){
+      setErrorMessage("Veuillez remplir tous les champs obligatoires.");
 
+      return;
+    }
     if (formData.password.length < 8) {
       setErrorMessage("Son mot de passe doit comporter au moins 8 caractères.");
       return;
@@ -69,14 +80,17 @@ const PrestataireRegister: React.FC = () => {
         ...formData,
         address: adresseFinale,
       });
-      console.log(formData);
-      navigate("/login");
+
+      setSuccessMessage("Compte créé avec succès !");
+      setTimeout(() => navigate("/login"),2000);
     } catch (error: any) {
-      console.log(error.response?.data);
-      setErrorMessage(
-        error.response?.data?.message ||
-          "Erreur lors de la création du compte. Veuillez réessayer.",
-      );
+      if(error.response?.data?.message){
+        setErrorMessage(error.response?.data?.message);
+      } else if(error.response?.data){
+        setErrorMessage(JSON.stringify(error.response?.data)); // show raw response
+      } else {
+        setErrorMessage("Erreur serveur.");
+      }
     } finally {
       setLoading(false);
     }
@@ -118,14 +132,37 @@ const PrestataireRegister: React.FC = () => {
   ];
 
   const [currentIndex, setCurrentIndex] = useState(0);
-
+  
   React.useEffect(() => {
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % previews.length);
     }, 4000);
     return () => clearInterval(interval);
   }, []);
+  React.useEffect(() => {
+    const fetchStats = async() => {
+      try{
+        const prestataireId = 1;
+        const data = await getStats(prestataireId);
+        setStats(data);
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+      }
+    };
+    fetchStats();
+  },[]);
 
+  React.useEffect(() => {
+    const fetchUpcoming = async() => {
+      try{
+        const data = await getUpcoming(1);
+        setUpcoming(data);
+      }catch(error){
+        console.log(error);
+      }
+    };
+    fetchUpcoming();
+  },[])
   const current = previews[currentIndex];
 
   const goToPrevious = () => {
@@ -138,9 +175,10 @@ const PrestataireRegister: React.FC = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden  flex justify-center items-start md:items-center pt-32 md:pt-0 transition-all duration-500 ease-out">
+      <AuthBackground/>
       {/* Logo - Top Left */}
       <div className="absolute top-[50px] right-5 z-20">
-        <Link to="/Home-Provider">
+        <Link to="/">
           <img
             src={logo}
             alt="Logo"
@@ -159,182 +197,101 @@ const PrestataireRegister: React.FC = () => {
       <div className="min-h-screen w-full flex items-center justify-center px-4">
         <div className="w-full max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-            {/* Left Side - Preview Card (Plus grand) */}
-            <div className="hidden lg:flex justify-center items-center">
-              <div className="relative rounded-2xl  md:mt-16 overflow-hidden shadow-2xl w-full h-[420px] sm:h-[480px] md:h-[520px] lg:h-[560px] xl:h-[600px] max-w-3xl">
-                {/* Background Image with Overlay */}
-                <div
-                  className="absolute inset-0 bg-cover bg-center transition-all duration-1000"
-                  style={{
-                    backgroundImage: `url('${current.background}')`,
-                    transform: "scale(1.05)",
-                  }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/60" />
-                </div>
+{/* Left Side - Dashboard Preview */}
+<div className="hidden lg:flex justify-center items-start self-stretch">
+  <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl flex flex-col gap-5 p-8"
+    style={{ background: "linear-gradient(145deg, #001f4d 0%, #0059B2 60%, #1A6FD1 100%)" }}>
 
-                {/* Decorative elements */}
-                <div
-                  className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full backdrop-blur-sm"
-                  style={{
-                    clipPath: "polygon(0 0, 100% 0, 100% 80%, 20% 100%)",
-                  }}
-                />
-                <div className="absolute bottom-10 left-10 w-40 h-40 bg-purple-500/10 rounded-full backdrop-blur-sm" />
+    {/* Decorative circles */}
+    <div className="absolute -top-16 -left-16 w-64 h-64 bg-white/5 rounded-full" />
+    <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-white/5 rounded-full" />
 
-                {/* Profile Card */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[85%] max-w-lg">
-                  <div className="bg-white rounded-2xl shadow-2xl p-8 transform transition-all duration-500 hover:scale-105">
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-6">
-                      <div className="flex items-center space-x-4">
-                        <div className="relative">
-                          <img
-                            src={current.avatar}
-                            alt={current.name}
-                            className="w-16 h-16 rounded-full object-cover ring-4 ring-purple-100"
-                          />
-                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white" />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-900">
-                            {current.name}
-                          </h3>
-                          <div className="flex items-center space-x-1 text-sm text-gray-600">
-                            <svg
-                              className="w-4 h-4"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                            <span>{current.location}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-1 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-sm font-semibold">
-                        <svg
-                          className="w-4 h-4 text-yellow-400"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                        <span>{current.rating}</span>
-                      </div>
-                    </div>
+    {/* Hero */}
+    <div className="relative z-10">
+      <p className="text-2xl font-bold text-white leading-snug">
+        Développez votre activité<br/>avec Bookify
+      </p>
+      <p className="text-sm text-blue-300 mt-2">
+        +500 prestataires nous font confiance au Maroc
+      </p>
+    </div>
 
-                    {/* Divider */}
-                    <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent mb-6" />
+    {/* Mini Dashboard */}
+    <div className="relative z-10 bg-white/10 border border-white/20 rounded-2xl p-4">
+      
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="bg-white/10 rounded-xl p-3">
+          <p className="text-xs text-blue-300 mb-1">Revenus ce mois</p>
+          <p className="text-xl font-bold text-white">{stats.revenus} <span className="text-xs text-blue-300">MAD</span></p>
+          <p className="text-xs text-green-300 mt-1">↑ +18% ce mois</p>
+        </div>
+        <div className="bg-white/10 rounded-xl p-3">
+          <p className="text-xs text-blue-300 mb-1">RDV aujourd'hui</p>
+          <p className="text-xl font-bold text-white">{stats.rdvToday}</p>
+          <p className="text-xs text-green-300 mt-1">↑ 2 nouveaux</p>
+        </div>
+      </div>
 
-                    {/* Description */}
-                    <p className="text-gray-600 text-sm leading-relaxed mb-6">
-                      {current.description}
-                    </p>
-
-                    {/* Services List */}
-                    <div className="space-y-3 mb-6">
-                      {current.services.map((service, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center space-x-3"
-                        >
-                          <div className="flex-shrink-0 w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                            <svg
-                              className="w-4 h-4 text-green-600"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M5 13l4 4L19 7"
-                              />
-                            </svg>
-                          </div>
-                          <span className="text-gray-700 text-sm font-medium">
-                            {service}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Action Button */}
-                    <button className="w-full bg-gray-900 hover:bg-gray-800 text-white py-3 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02]">
-                      Voir le profil
-                    </button>
-                  </div>
-                </div>
-
-                {/* Navigation Arrows */}
-                <div className="absolute bottom-8 right-8 flex items-center space-x-3">
-                  <button
-                    onClick={goToPrevious}
-                    className="w-12 h-12 bg-white/90 backdrop-blur-sm hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-110"
-                  >
-                    <svg
-                      className="w-5 h-5 text-gray-700"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 19l-7-7 7-7"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={goToNext}
-                    className="w-12 h-12 bg-white/90 backdrop-blur-sm hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-110"
-                  >
-                    <svg
-                      className="w-5 h-5 text-gray-700"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Indicators */}
-                <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                  {previews.map((_, index) => (
-                    <div
-                      key={index}
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        index === currentIndex
-                          ? "w-8 bg-white"
-                          : "w-2 bg-white/50"
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
+      {/* Appointments */}
+      <p className="text-xs text-blue-300 font-medium mb-2">Rendez-vous à venir</p>
+      {upcoming.map((rdv: any, index: number) => (
+          <div key={index} className="flex items-center gap-2 py-2 border-b border-white/10">
+            
+            <div className="w-7 h-7 rounded-full bg-blue-400 flex items-center justify-center text-white text-xs font-bold shrink-0">
+              {rdv.client?.charAt(0)}
             </div>
+
+            <p className="text-xs text-white font-medium flex-1">
+              {rdv.client}
+            </p>
+
+            <p className="text-xs text-blue-300">
+              {rdv.time}
+            </p>
+
+            <span className="text-[10px] bg-green-400/20 text-green-300 px-2 py-0.5 rounded-full">
+              {rdv.statut}
+            </span>
+
+          </div>
+        ))}
+    </div>
+
+    {/* Notification */}
+    <div className="relative z-10 bg-white/95 rounded-xl px-4 py-3 flex items-center gap-3">
+      <div className="w-2 h-2 bg-green-500 rounded-full shrink-0 animate-pulse" />
+      <p className="text-xs text-blue-900 font-medium flex-1">Nouveau rendez-vous — Karim T.</p>
+      <p className="text-xs text-gray-400">maintenant</p>
+    </div>
+
+    {/* Testimonials */}
+    <div className="relative z-10 flex flex-col gap-2">
+      {[
+        { initials: "DA", name: "Dr. Alami", quote: "+40 clients en 2 mois", img: "https://i.pravatar.cc/40?img=12" },
+        { initials: "SC", name: "Sara — Coiffeuse", quote: "Revenue x3 depuis Bookify", img: "https://i.pravatar.cc/40?img=45" },
+      ].map((t, i) => (
+        <div key={i} className="bg-white/8 border border-white/15 rounded-xl px-4 py-3 flex items-center gap-3">
+          <img src={t.img} alt={t.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+          <div className="flex-1">
+            <p className="text-xs text-white font-medium">{t.name}</p>
+            <p className="text-xs text-blue-300 mt-0.5">{t.quote}</p>
+          </div>
+          <span className="text-yellow-400 text-xs">★★★★★</span>
+        </div>
+      ))}
+    </div>
+
+  </div>
+</div>            
 
             {/* Right Side - Registration Form */}
             <div className="w-full flex justify-center ">
-              <div className="bg-white md:mt-16  md:h-[580px]  rounded-2xl md:rounded-3xl  shadow-2xl p-5 sm:p-8 md:pl-10 md:pr-10 md:pt-6 md:pb-6 w-full max-w-md lg:max-w-lg">
+              <div className="bg-white/95 backdrop-blur-sm  rounded-2xl md:rounded-3xl shadow-2xl p-5 sm:p-8 md:pl-10 md:pr-10 md:pt-6 md:pb-6 w-full max-w-md lg:max-w-lg">
                 {/* Title */}
                 <div className="text-center mb-6 md:mb-8">
                   <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                    Inscription Prestataires
+                    Inscription Prestataire
                   </h1>
                   <div className="w-16 h-1 bg-gradient-to-r from-[#004a96] to-[#1A6FD1] mx-auto rounded-full" />
                 </div>
@@ -351,11 +308,11 @@ const PrestataireRegister: React.FC = () => {
                       onFocus={() => setFocusedInput("fullName")}
                       onBlur={() => setFocusedInput(null)}
                       placeholder="Nom complet"
-                      className={`w-full px-4 py-3 md:py-2 sm:px-4 sm:py-3 border-2 ${
+                      className={`w-full px-4 py-3 border-2 ${
                         focusedInput === "fullName"
                          ? "border-[#0059B2] ring-4 sm:ring-4 ring-blue-500/10 "
                           : "border-gray-200"
-                      } rounded-lg sm:rounded-xl outline-none transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
+                      } rounded-lg sm:rounded-xl outline-none bg-white transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
                       required
                     />
                   </div>
@@ -370,11 +327,11 @@ const PrestataireRegister: React.FC = () => {
                       onFocus={() => setFocusedInput("email")}
                       onBlur={() => setFocusedInput(null)}
                       placeholder="Adresse Email"
-                      className={`w-full px-4 py-3 md:py-2 sm:px-4 sm:py-3 border-2 ${
+                      className={`w-full px-4 py-3 border-2 ${
                         focusedInput === "email"
                           ? "border-[#0059B2] ring-4 sm:ring-4 ring-blue-500/10 "
                           : "border-gray-200"
-                      } rounded-lg sm:rounded-xl outline-none transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
+                      } rounded-lg sm:rounded-xl outline-none bg-white transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
                       required
                     />
                   </div>
@@ -389,32 +346,41 @@ const PrestataireRegister: React.FC = () => {
                       onFocus={() => setFocusedInput("phone")}
                       onBlur={() => setFocusedInput(null)}
                       placeholder="Numéro de Téléphone"
-                      className={`w-full px-4 py-3 md:py-2 sm:px-4 sm:py-3 border-2 ${
+                      className={`w-full px-4 py-3 border-2 ${
                         focusedInput === "phone"
                           ? "border-[#0059B2] ring-4 sm:ring-4 ring-blue-500/10 "
                           : "border-gray-200"
-                      } rounded-lg sm:rounded-xl outline-none transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
+                      } rounded-lg sm:rounded-xl outline-none bg-white transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
                       required
                     />
                   </div>
 
                   {/* Address */}
-                  <div>
-                    <input
-                      type="text"
+                  <div className="relative">
+                    <select
                       name="address"
                       value={formData.address}
-                      onChange={handleChange}
+                      onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
                       onFocus={() => setFocusedInput("address")}
                       onBlur={() => setFocusedInput(null)}
-                      placeholder="Adresse"
-                      className={`w-full px-4 py-3 md:py-2 sm:px-4 sm:py-3 border-2 ${
+                      className={`w-full px-4 py-3 border-2 ${
                         focusedInput === "address"
-                          ? "border-[#0059B2] ring-4 sm:ring-4 ring-blue-500/10 "
+                          ? "border-[#0059B2] ring-4 sm:ring-4 ring-blue-500/10"
                           : "border-gray-200"
-                      } rounded-lg sm:rounded-xl outline-none transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
+                      } rounded-lg sm:rounded-xl outline-none bg-white transition-all duration-300 text-xs sm:text-sm md:text-base bg-white appearance-none cursor-pointer`}
                       required
-                    />
+                    >
+                      <option value="">Sélectionner une ville</option>
+                      {ADRESSES_AUTORISEES.map(city => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
+                    {/* Custom arrow */}
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
                   </div>
 
                   {/* Password */}
@@ -427,11 +393,11 @@ const PrestataireRegister: React.FC = () => {
                       onFocus={() => setFocusedInput("password")}
                       onBlur={() => setFocusedInput(null)}
                       placeholder="Mots de passe"
-                      className={`w-full px-4 py-3 md:py-2 sm:px-4 sm:py-3 border-2 ${
+                      className={`w-full px-4 py-3 border-2 ${
                         focusedInput === "password"
                           ? "border-[#0059B2] ring-4 sm:ring-4 ring-blue-500/10 "
                           : "border-gray-200"
-                      } rounded-lg sm:rounded-xl outline-none transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
+                      } rounded-lg sm:rounded-xl outline-none bg-white transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
                       required
                     />
                     <button
@@ -487,11 +453,11 @@ const PrestataireRegister: React.FC = () => {
                       onFocus={() => setFocusedInput("confirmPassword")}
                       onBlur={() => setFocusedInput(null)}
                       placeholder="Confirmer le mot de passe"
-                      className={`w-full px-4 py-3 md:py-2 sm:px-4 sm:py-3 border-2 ${
+                      className={`w-full px-4 py-3 border-2 ${
                         focusedInput === "confirmPassword"
                           ? "border-[#0059B2] ring-4 sm:ring-4 ring-blue-500/10 "
                           : "border-gray-200"
-                      } rounded-lg sm:rounded-xl outline-none transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
+                      } rounded-lg sm:rounded-xl outline-none bg-white transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
                       required
                     />
                     <button
@@ -554,7 +520,11 @@ const PrestataireRegister: React.FC = () => {
                       {errorMessage}
                     </div>
                   )}
-
+                  {successMessage && (
+                    <p className="text-green-600 text-sm text-center font-medium">
+                      {successMessage}
+                    </p>
+                  )}
                   {/* Login Link */}
                   <div className="text-center text-xs md:text-sm text-gray-600">
                     Vous avez déjà un compte ?{" "}

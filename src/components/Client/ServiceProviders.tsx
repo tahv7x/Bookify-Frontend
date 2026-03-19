@@ -1,431 +1,352 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
-
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { MapPin, Star, Search, SlidersHorizontal, ChevronRight, BadgeCheck, Zap, Users } from 'lucide-react';
 import TopBar from '../../components/Client/TopBar';
 import Navbar from '../../components/Client/Navbar';
 
 const providers = [
   {
-    name: "Dr. Youssef Alami",
-    rating: 4.9,
-    reviews: 127,
-    location: "Casablanca",
-    price: "300 MAD",
-    priceNote: "/ séance",
-    image: "https://i.pravatar.cc/150?img=12",
-    badge: "Top Pro",
-    hired: 43,
-    responseTime: "Répond en 1h",
-    tags: ["Certifié", "Expérimenté", "Disponible"],
-    description:
-      "Professionnel certifié avec plus de 10 ans d'expérience. Je m'engage à fournir un service de haute qualité adapté à vos besoins.",
+    id: 'dr-youssef-alami',
+    name: 'Dr. Youssef Alami',
+    rating: 4.9, reviews: 127, location: 'Casablanca',
+    price: 300, priceLabel: '300 MAD', priceNote: '/ séance',
+    image: 'https://i.pravatar.cc/150?img=12',
+    badge: 'Top Pro', hired: 43, responseTime: 'Répond en 1h',
+    tags: ['Certifié', 'Expérimenté', 'Disponible'],
+    description: "Professionnel certifié avec plus de 10 ans d'expérience. Je m'engage à fournir un service de haute qualité adapté à vos besoins.",
     verified: true,
   },
   {
-    name: "Sara Bennis",
-    rating: 5.0,
-    reviews: 89,
-    location: "Rabat",
-    price: "350 MAD",
-    priceNote: "/ séance",
-    image: "https://i.pravatar.cc/150?img=45",
-    badge: "Top Pro",
-    hired: 61,
-    responseTime: "Répond en 30min",
-    tags: ["Certifiée", "Bilingue", "Premium"],
-    description:
-      "Spécialiste reconnue dans son domaine. Mon approche personnalisée garantit des résultats exceptionnels pour chaque client.",
+    id: 'sara-bennis',
+    name: 'Sara Bennis',
+    rating: 5.0, reviews: 89, location: 'Rabat',
+    price: 350, priceLabel: '350 MAD', priceNote: '/ séance',
+    image: 'https://i.pravatar.cc/150?img=45',
+    badge: 'Top Pro', hired: 61, responseTime: 'Répond en 30min',
+    tags: ['Certifiée', 'Bilingue', 'Premium'],
+    description: 'Spécialiste reconnue dans son domaine. Mon approche personnalisée garantit des résultats exceptionnels pour chaque client.',
     verified: true,
   },
   {
-    name: "Karim Tahiri",
-    rating: 4.7,
-    reviews: 54,
-    location: "Marrakech",
-    price: "250 MAD",
-    priceNote: "/ séance",
-    image: "https://i.pravatar.cc/150?img=33",
-    badge: null,
-    hired: 28,
-    responseTime: "Répond en 2h",
-    tags: ["Expérimenté", "Flexible"],
-    description:
-      "Passionné par mon métier, je propose des services flexibles adaptés à votre emploi du temps et votre budget.",
+    id: 'karim-tahiri',
+    name: 'Karim Tahiri',
+    rating: 4.7, reviews: 54, location: 'Marrakech',
+    price: 250, priceLabel: '250 MAD', priceNote: '/ séance',
+    image: 'https://i.pravatar.cc/150?img=33',
+    badge: null, hired: 28, responseTime: 'Répond en 2h',
+    tags: ['Expérimenté', 'Flexible'],
+    description: 'Passionné par mon métier, je propose des services flexibles adaptés à votre emploi du temps et votre budget.',
     verified: false,
   },
   {
-    name: "Nadia Oufkir",
-    rating: 4.8,
-    reviews: 112,
-    location: "Fès",
-    price: "280 MAD",
-    priceNote: "/ séance",
-    image: "https://i.pravatar.cc/150?img=47",
-    badge: "Top Pro",
-    hired: 39,
-    responseTime: "Répond en 45min",
-    tags: ["Certifiée", "Multi-spécialités"],
-    description:
-      "Professionnelle dévouée avec une expertise dans plusieurs spécialités. Satisfaction client garantie à chaque prestation.",
+    id: 'nadia-oufkir',
+    name: 'Nadia Oufkir',
+    rating: 4.8, reviews: 112, location: 'Fès',
+    price: 280, priceLabel: '280 MAD', priceNote: '/ séance',
+    image: 'https://i.pravatar.cc/150?img=47',
+    badge: 'Top Pro', hired: 39, responseTime: 'Répond en 45min',
+    tags: ['Certifiée', 'Multi-spécialités'],
+    description: 'Professionnelle dévouée avec une expertise dans plusieurs spécialités. Satisfaction client garantie à chaque prestation.',
     verified: true,
   },
   {
-    name: "Hassan Berrada",
-    rating: 4.6,
-    reviews: 37,
-    location: "Tanger",
-    price: "220 MAD",
-    priceNote: "/ séance",
-    image: "https://i.pravatar.cc/150?img=15",
-    badge: null,
-    hired: 19,
-    responseTime: "Répond en 3h",
-    tags: ["Disponible", "Tarif abordable"],
-    description:
-      "Je mets mon expertise au service de vos projets avec sérieux et professionnalisme. Devis gratuit sur demande.",
+    id: 'hassan-berrada',
+    name: 'Hassan Berrada',
+    rating: 4.6, reviews: 37, location: 'Tanger',
+    price: 220, priceLabel: '220 MAD', priceNote: '/ séance',
+    image: 'https://i.pravatar.cc/150?img=15',
+    badge: null, hired: 19, responseTime: 'Répond en 3h',
+    tags: ['Disponible', 'Tarif abordable'],
+    description: 'Je mets mon expertise au service de vos projets avec sérieux et professionnalisme. Devis gratuit sur demande.',
     verified: false,
   },
   {
-    name: "Leila Mansouri",
-    rating: 4.9,
-    reviews: 203,
-    location: "Casablanca",
-    price: "400 MAD",
-    priceNote: "/ séance",
-    image: "https://i.pravatar.cc/150?img=44",
-    badge: "Top Pro",
-    hired: 88,
-    responseTime: "Répond en 20min",
-    tags: ["Premium", "Certifiée", "Experte"],
-    description:
-      "L'excellence comme standard. Avec plus de 8 ans d'expérience, je vous offre une prestation haut de gamme personnalisée.",
+    id: 'leila-mansouri',
+    name: 'Leila Mansouri',
+    rating: 4.9, reviews: 203, location: 'Casablanca',
+    price: 400, priceLabel: '400 MAD', priceNote: '/ séance',
+    image: 'https://i.pravatar.cc/150?img=44',
+    badge: 'Top Pro', hired: 88, responseTime: 'Répond en 20min',
+    tags: ['Premium', 'Certifiée', 'Experte'],
+    description: "L'excellence comme standard. Avec plus de 8 ans d'expérience, je vous offre une prestation haut de gamme personnalisée.",
     verified: true,
   },
 ];
 
+const CITIES = ['all', 'Casablanca', 'Rabat', 'Marrakech', 'Fès', 'Tanger'];
+const SORTS  = [
+  { val: 'recommended', label: 'Recommandés'    },
+  { val: 'rating',      label: 'Meilleure note' },
+  { val: 'price_asc',   label: 'Prix croissant' },
+  { val: 'price_desc',  label: 'Prix décroissant'},
+];
+const RATINGS = [
+  { val: 0,   label: 'Toutes les notes' },
+  { val: 4,   label: '4+ ⭐'            },
+  { val: 4.5, label: '4.5+ ⭐'          },
+  { val: 4.8, label: '4.8+ ⭐'          },
+];
 
-const Stars = ({ rating }: { rating: number }) => (
-  <div style={{ display: "flex", gap: 2 }}>
-    {[1, 2, 3, 4, 5].map((i) => {
-      const filled = rating >= i ? "#f59e0b" : rating >= i - 0.5 ? "#f59e0b" : "#d1d5db";
-      const opacity = rating >= i ? 1 : rating >= i - 0.5 ? 0.5 : 1;
-      return (
-        <svg key={i} width="13" height="13" viewBox="0 0 24 24" style={{ opacity }}>
-          <path
-            d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-            fill={filled}
-            stroke={filled}
-            strokeWidth="1"
-          />
-        </svg>
-      );
-    })}
+const Stars = ({ rating, size = 13 }: { rating: number; size?: number }) => (
+  <div className="flex gap-0.5">
+    {[1,2,3,4,5].map(i => (
+      <svg key={i} width={size} height={size} viewBox="0 0 24 24">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+          fill={rating >= i ? '#f59e0b' : '#e5e7eb'}/>
+      </svg>
+    ))}
   </div>
 );
 
 export default function ServiceProviders() {
   const { serviceName } = useParams();
-  const [sortBy, setSortBy] = useState("recommended");
-  const [selectedCity, setSelectedCity] = useState("all");
-  const [minRating, setMinRating] = useState(0);
-  const [userName, setUserName] = useState('');
+  const navigate = useNavigate();
+
+  const [sortBy,        setSortBy]        = useState('recommended');
+  const [selectedCity,  setSelectedCity]  = useState('all');
+  const [minRating,     setMinRating]     = useState(0);
+  const [userName,      setUserName]      = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
-  const navigate = useNavigate();
-  const cities = ["all", "Casablanca", "Rabat", "Marrakech", "Fès", "Tanger"];
+  const [showFilters,   setShowFilters]   = useState(false);
+
+  useEffect(() => {
+    const s = localStorage.getItem('user');
+    if (s) { try { const u = JSON.parse(s); setUserName(u.nom || u.NomComplet || u.name || ''); } catch(e){} }
+  }, []);
 
   const filtered = providers
-    .filter((p) => selectedCity === "all" || p.location === selectedCity)
-    .filter((p) => p.rating >= minRating)
+    .filter(p => selectedCity === 'all' || p.location === selectedCity)
+    .filter(p => p.rating >= minRating)
     .sort((a, b) => {
-      if (sortBy === "rating") return b.rating - a.rating;
-      if (sortBy === "price_asc") return parseInt(a.price) - parseInt(b.price);
-      if (sortBy === "price_desc") return parseInt(b.price) - parseInt(a.price);
+      if (sortBy === 'rating')      return b.rating - a.rating;
+      if (sortBy === 'price_asc')   return a.price  - b.price;
+      if (sortBy === 'price_desc')  return b.price  - a.price;
       return b.hired - a.hired;
     });
 
+  const FilterPanel = () => (
+    <div className="bg-white dark:bg-dark-surface rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-dark-border">
+      <p className="text-sm font-bold text-gray-900 dark:text-dark-text mb-5">Filtres</p>
+
+      {/* Sort */}
+      <div className="mb-6">
+        <p className="text-xs font-semibold text-gray-400 dark:text-dark-muted uppercase tracking-wider mb-3">Trier par</p>
+        {SORTS.map(opt => (
+          <label key={opt.val} className="flex items-center gap-3 py-2 cursor-pointer group">
+            <input type="radio" name="sort" value={opt.val} checked={sortBy === opt.val}
+              onChange={() => setSortBy(opt.val)}
+              className="accent-[#0059B2] w-4 h-4"/>
+            <span className={`text-sm transition-colors ${sortBy === opt.val ? 'text-[#0059B2] font-semibold' : 'text-gray-600 dark:text-dark-muted group-hover:text-gray-900 dark:group-hover:text-dark-text'}`}>
+              {opt.label}
+            </span>
+          </label>
+        ))}
+      </div>
+
+      {/* City */}
+      <div className="mb-6">
+        <p className="text-xs font-semibold text-gray-400 dark:text-dark-muted uppercase tracking-wider mb-3">Ville</p>
+        {CITIES.map(city => (
+          <label key={city} className="flex items-center gap-3 py-2 cursor-pointer group">
+            <input type="radio" name="city" value={city} checked={selectedCity === city}
+              onChange={() => setSelectedCity(city)}
+              className="accent-[#0059B2] w-4 h-4"/>
+            <span className={`text-sm transition-colors ${selectedCity === city ? 'text-[#0059B2] font-semibold' : 'text-gray-600 dark:text-dark-muted group-hover:text-gray-900 dark:group-hover:text-dark-text'}`}>
+              {city === 'all' ? 'Toutes les villes' : city}
+            </span>
+          </label>
+        ))}
+      </div>
+
+      {/* Rating */}
+      <div>
+        <p className="text-xs font-semibold text-gray-400 dark:text-dark-muted uppercase tracking-wider mb-3">Note minimale</p>
+        {RATINGS.map(opt => (
+          <label key={opt.val} className="flex items-center gap-3 py-2 cursor-pointer group">
+            <input type="radio" name="rating" value={opt.val} checked={minRating === opt.val}
+              onChange={() => setMinRating(opt.val)}
+              className="accent-[#0059B2] w-4 h-4"/>
+            <span className={`text-sm transition-colors ${minRating === opt.val ? 'text-[#0059B2] font-semibold' : 'text-gray-600 dark:text-dark-muted group-hover:text-gray-900 dark:group-hover:text-dark-text'}`}>
+              {opt.label}
+            </span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
-    <div style={{ minHeight: "100vh", background: "#f7f8fa", fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
-      {/* Top Bar */}
-        <TopBar 
-          userName = {userName}
-          onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-          isMobileMenuOpen={isSidebarOpen}
-        />
-      {/* Header */}
-      <div style={{
-        background: "#fff",
-        borderBottom: "1px solid #e5e7eb",
-        padding: "16px 32px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
-        boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-      }}>
-        {/* Mobile Overlay */}
+    <div className="min-h-screen bg-[#F4F7FE] dark:bg-dark-bg transition-colors duration-200">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Fraunces:wght@600;700;800&display=swap');
+        * { font-family:'Poppins',-apple-system,BlinkMacSystemFont,sans-serif; }
+        .heading-font { font-family:'Fraunces',Georgia,serif; }
+        @keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes fadeIn {from{opacity:0}                          to{opacity:1}}
+        .card-in{animation:fadeInUp .45s cubic-bezier(.16,1,.3,1) both;}
+        .sidebar-overlay{animation:fadeIn .3s ease-out forwards;}
+        .provider-card{transition:border-color .2s ease, box-shadow .2s ease;}
+        .provider-card:hover{border-color:#0059B2 !important; box-shadow:0 8px 30px rgba(0,89,178,0.10);}
+      `}</style>
+
+      {/* Sidebar overlay */}
       {isSidebarOpen && (
-        <div 
-          className="sidebar-overlay fixed inset-0 bg-black bg-opacity-50 z-40 "
-          onClick={() => setIsSidebarOpen(false)}
-        />
+        <div className="sidebar-overlay fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setIsSidebarOpen(false)}/>
       )}
-
-      {/* Sidebar Navigation */}
-      <div className={`fixed left-0 top-0 h-full w-64 bg-white transform transition-transform duration-300 z-50 ${
-        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
-
-        <Navbar
-          activeSection={activeSection}
-          onSectionChange={(section) => {
-            setActiveSection(section);
-            setIsSidebarOpen(false);
-          }}
-        />
-      </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button
-            style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 22, padding: 4 }}
-            onClick={() => window.history.back()}
-          >←</button>
-          <div>
-            <div style={{ fontSize: 13, color: "#9ca3af" }}>Résultats pour</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#111827" }}>
-              {decodeURIComponent(serviceName || "Service")}
-            </div>
-          </div>
-        </div>
-        <div style={{
-          background: "#fef3c7",
-          border: "1px solid #fcd34d",
-          borderRadius: 20,
-          padding: "6px 14px",
-          fontSize: 13,
-          fontWeight: 600,
-          color: "#92400e",
-        }}>
-          {filtered.length} prestataires disponibles
-        </div>
+      <div className={`fixed left-0 top-0 h-full w-64 bg-white dark:bg-dark-surface transform transition-transform duration-300 z-50 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <Navbar activeSection={activeSection} onSectionChange={s => { setActiveSection(s); setIsSidebarOpen(false); }}/>
       </div>
 
-      {/* Layout */}
-      <div style={{
-        maxWidth: 1180,
-        margin: "0 auto",
-        padding: "28px 20px",
-        display: "grid",
-        gridTemplateColumns: "260px 1fr",
-        gap: 28,
-        alignItems: "start",
-      }}>
-        {/* Sidebar */}
-        <div style={{
-          background: "#fff",
-          borderRadius: 16,
-          padding: 24,
-          boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
-          position: "sticky",
-          top: 80,
-        }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 20 }}>Filtres</div>
+      {/* TopBar */}
+      <TopBar userName={userName} onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)} isMobileMenuOpen={isSidebarOpen}/>
 
-          {/* Sort */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
-              Trier par
-            </div>
-            {[
-              { val: "recommended", label: "Recommandés" },
-              { val: "rating", label: "Meilleure note" },
-              { val: "price_asc", label: "Prix croissant" },
-              { val: "price_desc", label: "Prix décroissant" },
-            ].map((opt) => (
-              <label key={opt.val} style={{
-                display: "flex", alignItems: "center", gap: 10, padding: "7px 0",
-                cursor: "pointer", fontSize: 14,
-                color: sortBy === opt.val ? "#2563eb" : "#374151",
-                fontWeight: sortBy === opt.val ? 600 : 400,
-              }}>
-                <input type="radio" name="sort" value={opt.val} checked={sortBy === opt.val}
-                  onChange={() => setSortBy(opt.val)} style={{ accentColor: "#2563eb" }} />
-                {opt.label}
-              </label>
-            ))}
-          </div>
-          
-
-          {/* City */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
-              Ville
-            </div>
-            {cities.map((city) => (
-              <label key={city} style={{
-                display: "flex", alignItems: "center", gap: 10, padding: "7px 0",
-                cursor: "pointer", fontSize: 14,
-                color: selectedCity === city ? "#2563eb" : "#374151",
-                fontWeight: selectedCity === city ? 600 : 400,
-              }}>
-                <input type="radio" name="city" value={city} checked={selectedCity === city}
-                  onChange={() => setSelectedCity(city)} style={{ accentColor: "#2563eb" }} />
-                {city === "all" ? "Toutes les villes" : city}
-              </label>
-            ))}
-          </div>
-
-          {/* Rating */}
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
-              Note minimale
-            </div>
-            {[
-              { val: 0, label: "Toutes les notes" },
-              { val: 4, label: "4+ ⭐" },
-              { val: 4.5, label: "4.5+ ⭐" },
-              { val: 4.8, label: "4.8+ ⭐" },
-            ].map((opt) => (
-              <label key={opt.val} style={{
-                display: "flex", alignItems: "center", gap: 10, padding: "7px 0",
-                cursor: "pointer", fontSize: 14,
-                color: minRating === opt.val ? "#2563eb" : "#374151",
-                fontWeight: minRating === opt.val ? 600 : 400,
-              }}>
-                <input type="radio" name="rating" value={opt.val} checked={minRating === opt.val}
-                  onChange={() => setMinRating(opt.val)} style={{ accentColor: "#2563eb" }} />
-                {opt.label}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Cards */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {filtered.map((p, i) => (
-            <div
-              key={i}
-              style={{
-                background: "#fff",
-                borderRadius: 16,
-                padding: "22px 24px",
-                boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
-                display: "grid",
-                gridTemplateColumns: "auto 1fr auto",
-                gap: 20,
-                alignItems: "start",
-                border: "1.5px solid transparent",
-                transition: "border-color 0.2s, box-shadow 0.2s",
-                cursor: "pointer",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLDivElement).style.borderColor = "#2563eb";
-                (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 20px rgba(37,99,235,0.1)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLDivElement).style.borderColor = "transparent";
-                (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 6px rgba(0,0,0,0.07)";
-              }}
+      {/* Sub-header */}
+      <div className="bg-white dark:bg-dark-surface border-b border-gray-200 dark:border-dark-border px-4 sm:px-8 py-4 sticky top-[73px] z-20">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-dark-border text-gray-500 dark:text-dark-muted transition-colors"
             >
-              {/* Avatar */}
-              <div style={{ position: "relative" }}>
-                <img src={p.image} alt={p.name} style={{
-                  width: 76, height: 76, borderRadius: "50%",
-                  objectFit: "cover", border: "3px solid #e5e7eb",
-                }} />
-                {p.verified && (
-                  <div style={{
-                    position: "absolute", bottom: 1, right: 1,
-                    background: "#2563eb", borderRadius: "50%",
-                    width: 22, height: 22,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    border: "2px solid #fff",
-                  }}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                      <path d="M20 6L9 17l-5-5" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-                )}
-              </div>
-
-              {/* Info */}
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
-                  <span style={{ fontSize: 17, fontWeight: 700, color: "#111827" }}>{p.name}</span>
-                  {p.badge && (
-                    <span style={{
-                      background: "#fef3c7", color: "#92400e",
-                      fontSize: 11, fontWeight: 700,
-                      padding: "2px 10px", borderRadius: 20,
-                      border: "1px solid #fcd34d",
-                    }}>★ {p.badge}</span>
-                  )}
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-                  <Stars rating={p.rating} />
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{p.rating.toFixed(1)}</span>
-                  <span style={{ fontSize: 13, color: "#6b7280" }}>({p.reviews} avis)</span>
-                  <span style={{ color: "#d1d5db" }}>·</span>
-                  <span style={{ fontSize: 13, color: "#6b7280" }}>📍 {p.location}</span>
-                </div>
-
-                <p style={{ fontSize: 14, color: "#4b5563", lineHeight: 1.6, marginBottom: 12, maxWidth: 480 }}>
-                  {p.description}
-                </p>
-
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                  {p.tags.map((tag, ti) => (
-                    <span key={ti} style={{
-                      background: "#eff6ff", color: "#2563eb",
-                      fontSize: 12, fontWeight: 500,
-                      padding: "3px 10px", borderRadius: 20,
-                    }}>{tag}</span>
-                  ))}
-                  <span style={{ fontSize: 12, color: "#6b7280" }}>👥 {p.hired} clients</span>
-                  <span style={{ fontSize: 12, color: "#059669" }}>⚡ {p.responseTime}</span>
-                </div>
-              </div>
-
-              {/* CTA */}
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10, minWidth: 140 }}>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: "#111827" }}>{p.price}</div>
-                  <div style={{ fontSize: 12, color: "#9ca3af" }}>{p.priceNote}</div>
-                </div>
-                <button
-                  style={{
-                    background: "#2563eb", color: "#fff", border: "none",
-                    borderRadius: 10, padding: "11px 22px",
-                    fontSize: 14, fontWeight: 700, cursor: "pointer", width: "100%",
-                  }}
-                  onMouseEnter={(e) => ((e.target as HTMLButtonElement).style.background = "#1d4ed8")}
-                  onMouseLeave={(e) => ((e.target as HTMLButtonElement).style.background = "#2563eb")}
-                >
-                  Contacter
-                </button>
-                <button onClick={() => navigate(`/Service-Provider-Profile/${p.name.toLowerCase().replace(/ /g, "-")}`)}
-                style={{
-                  background: "#fff", color: "#2563eb",
-                  border: "2px solid #2563eb", borderRadius: 10,
-                  padding: "9px 22px", fontSize: 14, fontWeight: 600,
-                  cursor: "pointer", width: "100%",
-                }}>
-                  Voir le profil
-                </button>
-              </div>
+              <ChevronRight size={18} className="rotate-180"/>
+            </button>
+            <div>
+              <p className="text-xs text-gray-400 dark:text-dark-muted font-medium">Résultats pour</p>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-dark-text heading-font">
+                {decodeURIComponent(serviceName || 'Service')}
+              </h1>
             </div>
-          ))}
+          </div>
 
-          {filtered.length === 0 && (
-            <div style={{ background: "#fff", borderRadius: 16, padding: 48, textAlign: "center", color: "#6b7280" }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
-              <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Aucun prestataire trouvé</div>
-              <div style={{ fontSize: 14 }}>Essayez de modifier vos filtres</div>
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-500/10 text-[#0059B2] dark:text-blue-400 text-sm font-semibold px-4 py-2 rounded-full">
+              <Search size={14}/>{filtered.length} prestataires
+            </span>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="lg:hidden flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-dark-border text-gray-700 dark:text-dark-text rounded-xl font-medium text-sm"
+            >
+              <SlidersHorizontal size={15}/>Filtres
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex gap-6 items-start">
+
+          {/* Filter sidebar — desktop */}
+          <div className="hidden lg:block w-64 shrink-0 sticky top-36">
+            <FilterPanel/>
+          </div>
+
+          {/* Mobile filters drawer */}
+          {showFilters && (
+            <div className="lg:hidden fixed inset-0 z-50 flex">
+              <div className="absolute inset-0 bg-black/40" onClick={() => setShowFilters(false)}/>
+              <div className="relative ml-auto w-72 h-full bg-white dark:bg-dark-surface overflow-y-auto p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="font-bold text-gray-900 dark:text-dark-text">Filtres</p>
+                  <button onClick={() => setShowFilters(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+                </div>
+                <FilterPanel/>
+              </div>
             </div>
           )}
+
+          {/* Provider cards */}
+          <div className="flex-1 min-w-0 flex flex-col gap-4">
+            {filtered.length === 0 ? (
+              <div className="bg-white dark:bg-dark-surface rounded-2xl p-16 text-center border border-gray-100 dark:border-dark-border">
+                <div className="text-5xl mb-4">🔍</div>
+                <p className="text-lg font-bold text-gray-900 dark:text-dark-text mb-1">Aucun prestataire trouvé</p>
+                <p className="text-sm text-gray-500 dark:text-dark-muted">Essayez de modifier vos filtres</p>
+              </div>
+            ) : filtered.map((p, i) => (
+              <div
+                key={p.id}
+                className="provider-card bg-white dark:bg-dark-surface rounded-2xl p-5 sm:p-6 border border-gray-100 dark:border-dark-border shadow-sm card-in"
+                style={{animationDelay:`${i * 0.06}s`}}
+              >
+                <div className="flex flex-col sm:flex-row gap-5">
+
+                  {/* Avatar */}
+                  <div className="relative shrink-0 self-start">
+                    <img src={p.image} alt={p.name}
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-gray-100 dark:border-dark-border"/>
+                    {p.verified && (
+                      <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 bg-[#0059B2] rounded-full flex items-center justify-center border-2 border-white dark:border-dark-surface">
+                        <BadgeCheck size={13} color="#fff"/>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <h3 className="text-base font-bold text-gray-900 dark:text-dark-text">{p.name}</h3>
+                      {p.badge && (
+                        <span className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-bold px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-500/30">
+                          ★ {p.badge}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 mb-3">
+                      <div className="flex items-center gap-1.5">
+                        <Stars rating={p.rating}/>
+                        <span className="text-sm font-bold text-gray-900 dark:text-dark-text">{p.rating.toFixed(1)}</span>
+                        <span className="text-xs text-gray-500 dark:text-dark-muted">({p.reviews} avis)</span>
+                      </div>
+                      <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-dark-muted">
+                        <MapPin size={11} className="text-[#0059B2]"/>{p.location}
+                      </span>
+                    </div>
+
+                    <p className="text-sm text-gray-600 dark:text-dark-muted leading-relaxed mb-3 line-clamp-2">
+                      {p.description}
+                    </p>
+
+                    <div className="flex flex-wrap gap-2 items-center">
+                      {p.tags.map((tag, ti) => (
+                        <span key={ti} className="bg-blue-50 dark:bg-blue-500/10 text-[#0059B2] dark:text-blue-400 text-xs font-medium px-2.5 py-1 rounded-full">
+                          {tag}
+                        </span>
+                      ))}
+                      <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-dark-muted">
+                        <Users size={11}/>{p.hired} clients
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                        <Zap size={11}/>{p.responseTime}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* CTA */}
+                  <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-3 shrink-0 sm:min-w-[140px]">
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-gray-900 dark:text-dark-text">{p.priceLabel}</p>
+                      <p className="text-xs text-gray-400 dark:text-dark-muted">{p.priceNote}</p>
+                    </div>
+                    <div className="flex sm:flex-col gap-2 w-full sm:w-auto">
+                      <button className="flex-1 sm:flex-none bg-gradient-to-r from-[#004a96] to-[#1A6FD1] hover:from-[#003d80] hover:to-[#1560b8] text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm hover:shadow-md">
+                        Contacter
+                      </button>
+                      <button
+                        onClick={() => navigate(`/Service-Provider-Profile/${p.id}`)}
+                        className="flex-1 sm:flex-none bg-white dark:bg-dark-bg border-2 border-[#0059B2] dark:border-blue-500 text-[#0059B2] dark:text-blue-400 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-blue-50 dark:hover:bg-blue-500/10"
+                      >
+                        Voir profil
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

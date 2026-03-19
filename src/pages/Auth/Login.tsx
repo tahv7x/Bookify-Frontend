@@ -13,7 +13,7 @@ const Login: React.FC = () => {
     if(token && user){
     const role = JSON.parse(user).role;
     if(role === "ADMIN") navigate("/Admin/Accueil");
-    else if (role === "PRESTATAIRE") navigate("/Prestataire/Accueil");
+    else if (role === "PRESTATAIRE") navigate("/Home-Provider");
     else if (role === "CLIENT")  navigate("/Home-Client");;
     }
     },[]);
@@ -45,11 +45,14 @@ const Login: React.FC = () => {
       setSuccessMessage("Connexion réussie !");
       const role = data.user.role;
       if (role === "CLIENT") {
-        navigate("/Dashboard-Client");
+        setSuccessMessage("Login succès !");
+        setTimeout(() => navigate("/Home-Client"),2000);
       } else if (role == "PRESTATAIRE") {
-        navigate("/Prestataire/Accueil");
+        setSuccessMessage("Login succès !");
+        setTimeout(() => navigate("/Home-Provider"),2000);
       } else if (role == "ADMIN") {
-        navigate("/Admin/Accueil");
+        setSuccessMessage("Login succès !");
+        setTimeout(() => navigate("/Admin/Accueil"),2000);
       }
     } catch (error) {
       setErrorMessage("Email ou mot de passe incorrect.");
@@ -62,7 +65,7 @@ const Login: React.FC = () => {
       <AuthBackground/>
       {/* Logo - Top Left */}
       <div className="absolute top-[60px] left-5 z-20">
-        <Link to="/Home-Client">
+        <Link to="/">
           <img
             src={logo}
             alt="Logo"

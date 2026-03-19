@@ -30,7 +30,7 @@ const Home: React.FC = () => {
   const features=[{icon:Calendar,title:'Réservation Instantanée',description:'Prenez rendez-vous en quelques clics, 24h/24 et 7j/7'},{icon:Shield,title:'Professionnels Vérifiés',description:'Tous nos spécialistes sont certifiés et vérifiés'},{icon:Clock,title:'Rappels Automatiques',description:'Ne manquez plus jamais un rendez-vous médical'},{icon:Star,title:'Avis Authentiques',description:'Consultez les avis réels de milliers de patients'}];
 
   const [stats, setStats] = useState([{number:0,label:'Clients Actifs'},{number:0,label:'Spécialistes'},{number:0,label:'Rendez-vous'},{number:0,label:'Note Moyenne'}]);
-  useEffect(()=>{ fetch("http://localhost:5000/api/stats").then(r=>r.json()).then(d=>setStats([{number:d.clients,label:'Clients Actifs'},{number:d.specialists,label:'Spécialistes'},{number:d.appointments,label:'Rendez-vous'},{number:d.averageRating,label:'Note Moyenne'}])).catch(()=>{}); },[]);
+  useEffect(()=>{ fetch("http://localhost:5148/api/stats").then(r=>r.json()).then(d=>setStats([{number:d.clients,label:'Clients Actifs'},{number:d.specialists,label:'Spécialistes'},{number:d.appointments,label:'Rendez-vous'},{number:d.averageRating,label:'Note Moyenne'}])).catch(()=>{}); },[]);
   useEffect(()=>{ const s=localStorage.getItem('user'); if(s){try{const u=JSON.parse(s);setUserName(u.nom||u.NomComplet||u.name||'');}catch(e){}} },[]);
 
   return (

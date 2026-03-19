@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import logo from "../../assets/LogoB.png";
+import logo from "../../assets/LogoW.png";
 import { registerClient } from "../../services/Auth/authRegisterClientService";
 import { useNavigate } from "react-router-dom";
-
+import AuthBackground from "../../components/AuthBackground";
 const ADRESSES_AUTORISEES = [
   "Casablanca",
   "Rabat",
@@ -44,6 +44,10 @@ const ClientRegister: React.FC = () => {
 
     setErrorMessage("");
     setSuccessMessage("");
+    if(formData.nomComplet === "" || formData.email === "" || formData.telephone === "" || formData.address === "" || formData.password === "" || formData.confirmPassword === ""){
+      setErrorMessage("Veuillez remplir tous les champs obligatoires.");
+      return;
+    }
     if (formData.password.length < 8) {
       setErrorMessage("Le mots de passe doit contenir au moins 8 caractères.");
       return;
@@ -69,13 +73,14 @@ const ClientRegister: React.FC = () => {
         ...formData,
         address: adresseFinale
       });
-      console.log(formData);
       setSuccessMessage("Compte client créé avec succès.");
-      navigate("/Login");
+      setTimeout(() => navigate("/Login"), 2000); 
     } catch (error: any) {
       if(error.response?.data?.message){
         setErrorMessage(error.response?.data?.message);
-      }else{
+      } else if(error.response?.data){
+        setErrorMessage(JSON.stringify(error.response?.data)); // show raw response
+      } else {
         setErrorMessage("Erreur serveur.");
       }
     } finally {
@@ -85,6 +90,7 @@ const ClientRegister: React.FC = () => {
 
   const previews = [
     {
+      id: "studio-blackcut",
       name: "Studio BlackCut",
       location: "Rabat",
       rating: 4.6,
@@ -96,6 +102,7 @@ const ClientRegister: React.FC = () => {
         "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=2000",
     },
     {
+      id: "beauty-lounge",
       name: "Beauty Lounge",
       location: "Casablanca",
       rating: 4.8,
@@ -106,6 +113,7 @@ const ClientRegister: React.FC = () => {
         "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=2000",
     },
     {
+      id: "fitpro-gym",
       name: "FitPro Gym",
       location: "Marrakech",
       rating: 4.7,
@@ -139,6 +147,7 @@ const ClientRegister: React.FC = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden  flex justify-center items-start md:items-center pt-32 md:pt-0 transition-all duration-500 ease-out">
+      <AuthBackground/>
       {/* Logo - Top Left */}
       <div className="absolute top-[50px] right-5 z-20">
         <Link to="/">
@@ -160,183 +169,123 @@ const ClientRegister: React.FC = () => {
       {/* Main Container */}
       <div className="min-h-screen w-full flex items-center justify-center px-4">
         <div className="w-full max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-stretch">
             {/* Left Side - Preview Card (Plus grand) */}
-            <div className="hidden lg:flex justify-center items-center">
-              <div className="relative rounded-2xl  md:mt-16 overflow-hidden shadow-2xl w-full h-[420px] sm:h-[480px] md:h-[520px] lg:h-[560px] xl:h-[600px] max-w-3xl">
-                {/* Background Image with Overlay */}
-                <div
-                  className="absolute inset-0 bg-cover bg-center transition-all duration-1000"
-                  style={{
-                    backgroundImage: `url('${current.background}')`,
-                    transform: "scale(1.05)",
-                  }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/60" />
+            {/* Left Side */}
+<div className="hidden lg:flex justify-center items-start self-stretch">
+  <div className="relative rounded-2xl overflow-hidden shadow-2xl w-full h-full min-h-[600px]">
+
+    {/* Background images with fade transition */}
+    {previews.map((p, i) => (
+      <div key={i} className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
+        style={{
+          backgroundImage: `url('${p.background}')`,
+          opacity: i === currentIndex ? 1 : 0,
+          transform: "scale(1.05)",
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/70" />
+      </div>
+    ))}
+
+    {/* Decorative elements */}
+    <div className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full backdrop-blur-sm"
+      style={{ clipPath: "polygon(0 0, 100% 0, 100% 80%, 20% 100%)" }} />
+    <div className="absolute bottom-10 left-10 w-40 h-40 bg-purple-500/10 rounded-full backdrop-blur-sm" />
+
+    {/* Profile Card with fade transition */}
+    <div className="absolute inset-0 flex items-center justify-center">
+      {previews.map((p, i) => (
+        <div key={i} className="absolute w-[85%] max-w-lg transition-all duration-700"
+          style={{ opacity: i === currentIndex ? 1 : 0, transform: i === currentIndex ? 'translateY(0px) scale(1)' : 'translateY(20px) scale(0.97)' }}>
+          <div className="bg-white rounded-2xl shadow-2xl p-8 overflow-visible">
+
+            {/* Header */}
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <img src={p.avatar} alt={p.name} className="w-16 h-16 rounded-full object-cover ring-4 ring-blue-100" />
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white" />
                 </div>
-
-                {/* Decorative elements */}
-                <div
-                  className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full backdrop-blur-sm"
-                  style={{
-                    clipPath: "polygon(0 0, 100% 0, 100% 80%, 20% 100%)",
-                  }}
-                />
-                <div className="absolute bottom-10 left-10 w-40 h-40 bg-purple-500/10 rounded-full backdrop-blur-sm" />
-
-                {/* Profile Card */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[85%] max-w-lg">
-                  <div className="bg-white rounded-2xl shadow-2xl p-8 transform transition-all duration-500 hover:scale-105">
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-6">
-                      <div className="flex items-center space-x-4">
-                        <div className="relative">
-                          <img
-                            src={current.avatar}
-                            alt={current.name}
-                            className="w-16 h-16 rounded-full object-cover ring-4 ring-purple-100"
-                          />
-                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white" />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-900">
-                            {current.name}
-                          </h3>
-                          <div className="flex items-center space-x-1 text-sm text-gray-600">
-                            <svg
-                              className="w-4 h-4"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                            <span>{current.location}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-1 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-sm font-semibold">
-                        <svg
-                          className="w-4 h-4 text-yellow-400"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                        <span>{current.rating}</span>
-                      </div>
-                    </div>
-
-                    {/* Divider */}
-                    <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent mb-6" />
-
-                    {/* Description */}
-                    <p className="text-gray-600 text-sm leading-relaxed mb-6">
-                      {current.description}
-                    </p>
-
-                    {/* Services List */}
-                    <div className="space-y-3 mb-6">
-                      {current.services.map((service, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center space-x-3"
-                        >
-                          <div className="flex-shrink-0 w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                            <svg
-                              className="w-4 h-4 text-green-600"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M5 13l4 4L19 7"
-                              />
-                            </svg>
-                          </div>
-                          <span className="text-gray-700 text-sm font-medium">
-                            {service}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Action Button */}
-                    <button className="w-full bg-[#0059B2] hover:bg-[#004a96] text-white py-3 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02]">
-                      Voir le profil
-                    </button>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">{p.name}</h3>
+                  <div className="flex items-center space-x-1 text-sm text-gray-500">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    </svg>
+                    <span>{p.location}</span>
                   </div>
                 </div>
-
-                {/* Navigation Arrows */}
-                <div className="absolute bottom-8 right-8 flex items-center space-x-3">
-                  <button
-                    onClick={goToPrevious}
-                    className="w-12 h-12 bg-white/90 backdrop-blur-sm hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-110"
-                  >
-                    <svg
-                      className="w-5 h-5 text-gray-700"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 19l-7-7 7-7"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={goToNext}
-                    className="w-12 h-12 bg-white/90 backdrop-blur-sm hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-110"
-                  >
-                    <svg
-                      className="w-5 h-5 text-gray-700"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Indicators */}
-                <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                  {previews.map((_, index) => (
-                    <div
-                      key={index}
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        index === currentIndex
-                          ? "w-8 bg-white"
-                          : "w-2 bg-white/50"
-                      }`}
-                    />
-                  ))}
-                </div>
+              </div>
+              <div className="flex items-center space-x-1 bg-amber-400 text-white px-3 py-1.5 rounded-xl text-sm font-bold shadow-md">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+                <span>{p.rating}</span>
               </div>
             </div>
 
+            {/* Divider */}
+            <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent mb-5" />
+
+            {/* Description */}
+            <p className="text-gray-500 text-sm leading-relaxed mb-5">{p.description}</p>
+
+            {/* Services */}
+            <div className="space-y-2.5 mb-6">
+              {p.services.map((service, idx) => (
+                <div key={idx} className="flex items-center space-x-3">
+                  <div className="flex-shrink-0 w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg className="w-3 h-3 text-[#0059B2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span className="text-gray-700 text-sm font-medium">{service}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Button */}
+            <button onClick={() => navigate(`/Service-Provider-Profile/${current.id}`)}
+              className="w-full bg-gradient-to-r from-[#0059B2] to-[#004a96] hover:from-[#004a96] hover:to-[#0059B2] text-white py-3.5 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer">             
+              Voir le profil
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Navigation Arrows */}
+    <div className="absolute bottom-8 right-8 flex items-center space-x-3 z-10">
+      <button onClick={goToPrevious} className="w-10 h-10 bg-white/20 backdrop-blur-sm hover:bg-white/40 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110">
+        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <button onClick={goToNext} className="w-10 h-10 bg-white/20 backdrop-blur-sm hover:bg-white/40 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110">
+        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+
+    {/* Indicators */}
+    <div className="absolute bottom-9 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
+      {previews.map((_, index) => (
+        <button key={index} onClick={() => setCurrentIndex(index)}
+          className={`h-2 rounded-full transition-all duration-300 ${index === currentIndex ? 'w-8 bg-white' : 'w-2 bg-white/40'}`} />
+      ))}
+    </div>
+  </div>
+</div>
+
             {/* Right Side - Registration Form */}
             <div className="w-full flex justify-center ">
-              <div className="bg-white md:mt-16  md:h-[580px]  rounded-2xl md:rounded-3xl  shadow-2xl p-5 sm:p-8 md:pl-10 md:pr-10 md:pt-6 md:pb-6 w-full max-w-md lg:max-w-lg">
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-2xl p-5 sm:p-8 md:pl-10 md:pr-10 md:pt-6 md:pb-6 w-full max-w-md lg:max-w-lg">
                 {/* Title */}
                 <div className="text-center mb-6 md:mb-8">
                   <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                    Client Registration
+                    Inscription Client
                   </h1>
                   <div className="w-16 h-1 bg-gradient-to-r from-[#004a96] to-[#1A6FD1] mx-auto rounded-full" />
                 </div>
@@ -353,11 +302,11 @@ const ClientRegister: React.FC = () => {
                       onFocus={() => setFocusedInput("fullName")}
                       onBlur={() => setFocusedInput(null)}
                       placeholder="Nom Complet"
-                      className={`w-full px-4 py-3 md:py-2 sm:px-4 sm:py-3 border-2 ${
+                      className={` bg-white/95 w-full px-4 py-3 border-2 ${
                         focusedInput === "fullName"
                           ? "border-[#0059B2] ring-4 sm:ring-4 ring-blue-500/10 "
                           : "border-gray-200"
-                      } rounded-lg sm:rounded-xl outline-none transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
+                      } rounded-lg sm:rounded-xl outline-none bg-white transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
                       required
                     />
                   </div>
@@ -372,11 +321,11 @@ const ClientRegister: React.FC = () => {
                       onFocus={() => setFocusedInput("email")}
                       onBlur={() => setFocusedInput(null)}
                       placeholder="Adresse Email"
-                      className={`w-full px-4 py-3 md:py-2 border-2 ${
+                      className={`w-full px-4 py-3 border-2 ${
                         focusedInput === "email"
                          ? "border-[#0059B2] ring-4 sm:ring-4 ring-blue-500/10 "
                           : "border-gray-200"
-                      } rounded-lg sm:rounded-xl outline-none transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
+                      } rounded-lg sm:rounded-xl outline-none bg-white transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
                       required
                     />
                   </div>
@@ -391,34 +340,42 @@ const ClientRegister: React.FC = () => {
                       onFocus={() => setFocusedInput("phone")}
                       onBlur={() => setFocusedInput(null)}
                       placeholder="Numéro de Téléphone"
-                      className={`w-full px-4 py-3 md:py-2  border-2 ${
+                      className={`w-full px-4 py-3 border-2 ${
                         focusedInput === "phone"
                          ? "border-[#0059B2] ring-4 sm:ring-4 ring-blue-500/10 "
                           : "border-gray-200"
-                      } rounded-lg sm:rounded-xl outline-none transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
+                      } rounded-lg sm:rounded-xl outline-none bg-white transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
                       required
                     />
                   </div>
 
                   {/* Address */}
-                  <div>
-                    <input
-                      type="text"
+                  <div className="relative">
+                    <select
                       name="address"
                       value={formData.address}
-                      onChange={handleChange}
+                      onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
                       onFocus={() => setFocusedInput("address")}
                       onBlur={() => setFocusedInput(null)}
-                      placeholder="Adresse"
-                      className={`w-full px-4 py-3 md:py-2 border-2 ${
+                      className={`w-full px-4 py-3 border-2 ${
                         focusedInput === "address"
-                          ? "border-[#0059B2] ring-4 sm:ring-4 ring-blue-500/10 "
+                          ? "border-[#0059B2] ring-4 sm:ring-4 ring-blue-500/10"
                           : "border-gray-200"
-                      } rounded-lg sm:rounded-xl outline-none transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
+                      } rounded-lg sm:rounded-xl outline-none bg-white transition-all duration-300 text-xs sm:text-sm md:text-base bg-white appearance-none cursor-pointer`}
                       required
-                    />
+                    >
+                      <option value="">Sélectionner une ville</option>
+                      {ADRESSES_AUTORISEES.map(city => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
+                    {/* Custom arrow */}
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
                   </div>
-
                   {/* Password */}
                   <div className="relative">
                     <input
@@ -429,11 +386,11 @@ const ClientRegister: React.FC = () => {
                       onFocus={() => setFocusedInput("password")}
                       onBlur={() => setFocusedInput(null)}
                       placeholder="Mot de passe"
-                      className={`w-full px-4 py-3 md:py-2 pr-12 border-2 ${
+                      className={`w-full px-4 py-3 pr-12 border-2 ${
                         focusedInput === "password"
                           ? "border-[#0059B2] ring-4 sm:ring-4 ring-blue-500/10 "
                           : "border-gray-200"
-                      } rounded-lg sm:rounded-xl outline-none transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
+                      } rounded-lg sm:rounded-xl outline-none bg-white transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
                       required
                     />
                     <button
@@ -489,11 +446,11 @@ const ClientRegister: React.FC = () => {
                       onFocus={() => setFocusedInput("confirmPassword")}
                       onBlur={() => setFocusedInput(null)}
                       placeholder="Confirmer le mot de passe"
-                      className={`w-full  px-4 py-3 md:py-2 pr-12 border-2 ${
+                      className={`w-full  px-4 py-3 pr-12 border-2 ${
                         focusedInput === "confirmPassword"
                           ? "border-[#0059B2] ring-4 sm:ring-4 ring-blue-500/10 "
                           : "border-gray-200"
-                      } rounded-lg sm:rounded-xl outline-none transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
+                      } rounded-lg sm:rounded-xl outline-none bg-white transition-all duration-300 placeholder-gray-400 text-xs sm:text-sm md:text-base`}
                       required
                     />
                     <button

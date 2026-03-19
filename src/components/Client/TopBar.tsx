@@ -21,7 +21,6 @@ const TopBar: React.FC<TopBarProps> = ({
   onMenuToggle,
   isMobileMenuOpen = false
 }) => {
-  // ✅ FIXED: use global theme context instead of local state
   const { isDark, toggleTheme } = useTheme();
 
   const location = useLocation();
@@ -268,11 +267,10 @@ const TopBar: React.FC<TopBarProps> = ({
 
                 <div className="border-t border-gray-100 dark:border-dark-border pt-1 mt-1">
                   <button
-                    onClick={() => {
-                      setOpenAvatar(false);
+                    onClick={() =>{
+                      localStorage.removeItem('token');
                       localStorage.removeItem('user');
-                      localStorage.removeItem('userAvatar');
-                      navigate('/login');
+                      window.location.href = "/login";
                     }}
                     className="w-full text-left px-4 py-2.5 flex items-center gap-3 text-sm text-gray-700 dark:text-dark-text font-medium hover:bg-gray-50 dark:hover:bg-dark-border transition-colors"
                   style={{color:"#ef4444"}}>

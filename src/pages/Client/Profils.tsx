@@ -35,7 +35,11 @@ const Avatar: React.FC<{ src: string | null; initials: string; size?: number; fo
     )}
   </div>
 );
-
+const logOut = ()  => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.location.href = "/login";
+}
 const Profils: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('profils');
@@ -236,7 +240,7 @@ const Profils: React.FC = () => {
               <button className="prof-nav" onClick={() => setShowAide(true)}>
                 <HelpCircle size={16}/>Aide
               </button>
-              <button className="prof-nav" style={{color:'#ef4444'}} onClick={()=>{localStorage.removeItem('user');window.location.href='/login';}}>
+              <button className="prof-nav" style={{color:'#ef4444'}} onClick={logOut}>
                 <LogOut size={16} style={{color:'#ef4444'}}/>Déconnexion
               </button>
             </div>

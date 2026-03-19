@@ -5,7 +5,7 @@ export const registerClient = async (formData: any) => {
     nomComplet: formData.nomComplet,
     email: formData.email,
     telephone: formData.telephone,
-    adresse: formData.address, // ⭐ هنا تصححات
+    adresse: formData.address, 
     password: formData.password,
     role: "CLIENT",
   });

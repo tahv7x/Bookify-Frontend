@@ -1,10 +1,23 @@
-import React from "react";
+import React, { useEffect } from "react";
 import Navbar from "../../components/Navbar";
 import RoleCard from "../../components/RoleCard";
 import "../../styles/home.css";
 import BlurText from "../../components/textBlur";
+import { useNavigate } from "react-router-dom";
 
 const Home: React.FC = () => {
+  const navigate = useNavigate();
+  useEffect(()=>{
+      const token = localStorage.getItem("token");
+      const user = localStorage.getItem("user");
+
+      if(token && user){
+        const role = JSON.parse(user).role;
+        if (role === "CLIENT") navigate("/Home-Client");
+        else if (role === "PRESTATAIRE") navigate("/Home-Provider");
+        else if (role === "ADMIN") navigate("/Admin/Accueil");
+      }
+    },[])
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-gray-50 via-white to-gray-100 relative overflow-hidden">
       {/* Background decorative circles */}
