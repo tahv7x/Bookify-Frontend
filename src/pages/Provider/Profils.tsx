@@ -21,7 +21,10 @@ const readFileAsDataURL = (file: File): Promise<string> =>
 const Avatar: React.FC<{ src: string | null; initials: string; size?: number; fontSize?: number; onClick?: () => void; showEditBadge?: boolean; loading?: boolean; }> =
   ({ src, initials, size = 88, fontSize = 32, onClick, showEditBadge = false, loading = false }) => (
   <div style={{ position: 'relative', display: 'inline-block' }} onClick={onClick}>
-    <div style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, cursor: onClick ? 'pointer' : 'default', position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 4px var(--tw-ring-color,#fff), 0 0 0 6px #e5e7eb', overflow: 'hidden' }}>
+      <div
+        className="ring-4 ring-white dark:ring-dark-bg ring-offset-2 ring-offset-gray-200 dark:ring-offset-dark-border"
+        style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, cursor: onClick ? 'pointer' : 'default', position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}
+      >      
       {loading ? <Loader2 size={size * 0.28} className="spin" style={{ color: '#0059B2' }} />
         : src ? <img src={src} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg,#0059B2,#1A6FD1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize, fontWeight: 700, color: '#fff' }}>{initials}</div>
@@ -155,7 +158,6 @@ const Profils: React.FC = () => {
         .avatar-hover-overlay{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;}
         div[style*="cursor: pointer"]:hover .avatar-hover-overlay{opacity:1;}
 
-        /* ── INPUTS ── */
         .input-field{width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;outline:none;background:#fafafa;color:#111827;transition:border-color .2s,box-shadow .2s,background .2s;}
         .input-field:focus{border-color:#0059B2;box-shadow:0 0 0 3px rgba(37,99,235,.12);background:#fff;}
         .input-field:disabled{background:#f3f4f6;color:#9ca3af;cursor:not-allowed;}

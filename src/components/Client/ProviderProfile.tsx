@@ -4,57 +4,9 @@ import {
   ChevronRight, BadgeCheck, Star, MapPin, Zap, Users,
   Calendar, MessageCircle, ChevronDown, ChevronUp, Send
 } from 'lucide-react';
+import { getProviderProfile } from '../../services/provider/providerService';
 
-const PROVIDERS: Record<string, any> = {
-  'dr-youssef-alami': {
-    name: 'Dr. Youssef Alami', business: 'Cabinet Alami', title: 'Médecin Généraliste',
-    rating: 4.9, reviews: 127, hired: 43, location: 'Casablanca, Maarif',
-    responseTime: 'Répond en 1h', memberSince: '2021',
-    image: 'https://i.pravatar.cc/150?img=12', badge: 'Top Pro', verified: true,
-    price: '300 MAD', priceNote: 'séance',
-    intro: "Professionnel certifié avec plus de 10 ans d'expérience. Spécialiste en médecine générale, suivi chronique, et bilans complets. Je m'engage pour votre santé.",
-    credentials: ['Certifié', 'Assurance incluse', "Contrôle d'antécédents", 'Licence vérifiée'],
-    photos: [
-      'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=600&h=400&fit=crop',
-      'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&h=400&fit=crop',
-      'https://images.unsplash.com/photo-1551190822-a9333d879b1f?w=600&h=400&fit=crop',
-      'https://images.unsplash.com/photo-1584515933487-779824d29309?w=600&h=400&fit=crop',
-    ],
-    services: ['Consultation générale', 'Suivi médical', 'Bilan complet', 'Téléconsultation'],
-    faq: [
-      { q: 'Quelles sont vos disponibilités ?', a: 'Je suis disponible du lundi au samedi, de 9h à 19h. Les rendez-vous urgents peuvent être arrangés.' },
-      { q: 'Acceptez-vous les mutuelles ?',     a: 'Oui, je travaille avec la plupart des mutuelles marocaines. Contactez-moi pour vérifier la vôtre.' },
-      { q: 'Proposez-vous des consultations à domicile ?', a: 'Oui, pour les patients à mobilité réduite ou sur demande spéciale.' },
-    ],
-    reviewsList: [
-      { name: 'Fatima Z.', avatar: 'https://i.pravatar.cc/40?img=5',  rating: 5, date: 'Il y a 2 semaines', text: 'Excellent professionnel, très à l\'écoute. Je recommande vivement.' },
-      { name: 'Mohamed A.', avatar: 'https://i.pravatar.cc/40?img=7', rating: 5, date: 'Il y a 1 mois',    text: 'Très professionnel et ponctuel. Exactement ce dont j\'avais besoin.' },
-      { name: 'Aicha B.',   avatar: 'https://i.pravatar.cc/40?img=9', rating: 4, date: 'Il y a 2 mois',    text: 'Bon service, explications claires et détaillées. Reviendrai.' },
-      { name: 'Omar K.',   avatar: 'https://i.pravatar.cc/40?img=11', rating: 5, date: 'Il y a 3 mois',    text: 'Rapide, efficace et très compétent. Parfait pour toute la famille.' },
-    ],
-  },
-  'sara-bennis': {
-    name: 'Sara Bennis', business: 'Cabinet Bennis', title: 'Spécialiste Premium',
-    rating: 5.0, reviews: 89, hired: 61, location: 'Rabat, Agdal',
-    responseTime: 'Répond en 30min', memberSince: '2020',
-    image: 'https://i.pravatar.cc/150?img=45', badge: 'Top Pro', verified: true,
-    price: '350 MAD', priceNote: 'séance',
-    intro: "Spécialiste avec une approche 100% personnalisée. Chaque client mérite une attention particulière. Mon objectif : des résultats exceptionnels, à chaque fois.",
-    credentials: ['Certifiée', 'Assurance incluse', "Contrôle d'antécédents"],
-    photos: [
-      'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&h=400&fit=crop',
-      'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=600&h=400&fit=crop',
-    ],
-    services: ['Consultation premium', 'Suivi personnalisé', 'Pack complet'],
-    faq: [
-      { q: 'Quelle est votre spécialité principale ?', a: 'Je me spécialise dans le suivi personnalisé et les approches intégratives adaptées à chaque profil.' },
-    ],
-    reviewsList: [
-      { name: 'Khadija M.', avatar: 'https://i.pravatar.cc/40?img=11', rating: 5, date: 'Il y a 3 jours',    text: 'Parfaite ! Service irréprochable et très sympathique.' },
-      { name: 'Yassine T.', avatar: 'https://i.pravatar.cc/40?img=13', rating: 5, date: 'Il y a 3 semaines', text: 'La meilleure de sa catégorie. Résultats au-delà de mes attentes.' },
-    ],
-  },
-};
+
 
 const StarsRow = ({ rating, size = 13 }: { rating: number; size?: number }) => (
   <div className="flex gap-0.5">
@@ -70,7 +22,9 @@ const StarsRow = ({ rating, size = 13 }: { rating: number; size?: number }) => (
 export default function ProviderProfile() {
   const { providerId } = useParams();
   const navigate = useNavigate();
-
+  const [isRedirecting, setIsRedirecting] = useState(false);  const [provider,setProvider] = useState<any>(null);
+  const [loading,setLoading] = useState(true);
+  const [error,setError] = useState("");
   const [activePhoto, setActivePhoto] = useState(0);
   const [openFaq,     setOpenFaq]     = useState<number | null>(null);
   const [showAll,     setShowAll]     = useState(false);
@@ -89,22 +43,90 @@ export default function ProviderProfile() {
     if(isLoggedIn()){
       action();
     }else{
-      navigate("/Login");
+      setIsRedirecting(true);
+      setTimeout(() =>{
+        navigate("/login");
+      },800);
     }
   }
   useEffect(() => {
     const s = localStorage.getItem('user');
     if (s) { try { const u = JSON.parse(s); setUserName(u.nom || u.NomComplet || u.name || ''); } catch(e){} }
   }, []);
-
-  const key = providerId || 'dr-youssef-alami';
-  const p   = PROVIDERS[key] || PROVIDERS['dr-youssef-alami'];
-  const displayedReviews = showAll ? p.reviewsList : p.reviewsList.slice(0, 2);
-
+  const displayedReviews = showAll 
+  ? provider?.reviewList || []
+  : provider?.reviewList?.slice(0, 2) || []
+  useEffect(() =>{
+    const fetchProvider = async() => {
+      try{
+        setLoading(true);
+        const data = await getProviderProfile(Number(providerId));
+        const apiData = data;
+        const mappedProvider = {
+          id: apiData.id,
+          name: apiData.nom,
+          business: apiData.nom,
+          title: apiData.specialite,
+          rating: apiData.note,
+          reviews: 0,
+          hired: 0,
+          location: "Casablanca",
+          intro: apiData.bio,
+          services: apiData.services.map((s: any) => s.name),
+          photos: [],
+          reviewsList: [],
+          credentials: [],
+          faq: [],
+          price: apiData.services[0]?.prix || 0,
+          priceNote: "par service",
+          responseTime: "Réponse rapide",
+          memberSince: "2024"
+        };
+        setProvider(mappedProvider);
+      }catch(err: any){
+        setError(err.message);
+      }finally{
+        setTimeout(() => {
+          setLoading(false);
+        },800);
+      }
+    };
+    if(providerId) fetchProvider();
+  },[providerId]);
   const ratingPcts: Record<number, number> = { 5:78, 4:16, 3:4, 2:2, 1:0 };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F4F7FE] gap-4">
+        <div className="w-12 h-12 border-4 border-blue-200 border-t-[#0059B2] rounded-full animate-spin"></div>
+        <p className="text-sm text-gray-500 font-medium">
+          Chargement en cours...
+        </p>
+      </div>
+    );
+  }
+  if (error) {
+    return <div className="p-10 text-red-500">{error}</div>;
+  }
 
+  if (!provider) {
+    return (
+      <div className="p-10 text-center text-gray-500">
+        Aucun prestataire trouvé
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-[#F4F7FE] dark:bg-dark-bg transition-colors duration-200">
+      {isRedirecting && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl px-8 py-6 flex flex-col items-center gap-4 shadow-xl animate-scaleIn">
+            <div className="w-8 h-8 border-4 border-blue-200 border-t-[#0059B2] rounded-full animate-spin"></div>
+            <p className="text-sm font-semibold text-gray-600">
+              Redirection vers login...
+            </p>
+          </div>
+        </div>
+      )}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Fraunces:wght@600;700;800&display=swap');
         * { font-family:'Poppins',-apple-system,BlinkMacSystemFont,sans-serif; }
@@ -114,13 +136,9 @@ export default function ProviderProfile() {
         .fade-up   {animation:fadeInUp .45s cubic-bezier(.16,1,.3,1) both;}
         .sidebar-overlay{animation:fadeIn .3s ease-out forwards;}
       `}</style>
-
-      {/* Sidebar */}
       {isSidebarOpen && (
         <div className="sidebar-overlay fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setIsSidebarOpen(false)}/>
       )}
-
-      {/* Sticky top nav */}
       <div className="bg-white dark:bg-dark-surface border-b border-gray-200 dark:border-dark-border px-4 sm:px-8 py-3 sticky top-0 z-30 shadow-sm">
         <div className="max-w-6xl mx-auto flex items-center gap-3">
           <button
@@ -138,18 +156,17 @@ export default function ProviderProfile() {
 
           {/* LEFT COLUMN */}
           <div className="lg:col-span-2 flex flex-col gap-5">
-
             {/* Hero card */}
             <div className="bg-white dark:bg-dark-surface rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-dark-border fade-up">
               {/* Photo gallery */}
-              {p.photos.length > 0 && (
+              {provider.photos.length > 0 && (
                 <div className="relative h-56 sm:h-72 bg-gray-900 overflow-hidden">
-                  <img src={p.photos[activePhoto]} alt="work"
+                  <img src={provider.photos[activePhoto]} alt="work"
                     className="w-full h-full object-cover opacity-90 transition-all duration-500"/>
                   {/* Dots */}
-                  {p.photos.length > 1 && (
+                  {provider.photos.length > 1 && (
                     <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                      {p.photos.map((_: any, i: number) => (
+                      {provider.photos.map((_: any, i: number) => (
                         <button key={i} onClick={() => setActivePhoto(i)}
                           className={`h-1.5 rounded-full transition-all duration-200 ${i === activePhoto ? 'w-6 bg-white' : 'w-1.5 bg-white/50'}`}/>
                       ))}
@@ -157,7 +174,7 @@ export default function ProviderProfile() {
                   )}
                   {/* Counter */}
                   <div className="absolute top-3 right-3 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-lg">
-                    {activePhoto + 1} / {p.photos.length}
+                    {activePhoto + 1} / {provider.photos.length}
                   </div>
                 </div>
               )}
@@ -166,9 +183,9 @@ export default function ProviderProfile() {
               <div className="p-5 sm:p-6">
                 <div className="flex gap-4 items-start">
                   <div className="relative shrink-0">
-                    <img src={p.image} alt={p.name}
+                    <img src={provider.image} alt={provider.name}
                       className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-gray-100 dark:border-dark-border"/>
-                    {p.verified && (
+                    {provider.verified && (
                       <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 bg-[#0059B2] rounded-full flex items-center justify-center border-2 border-white dark:border-dark-surface">
                         <BadgeCheck size={13} color="#fff"/>
                       </div>
@@ -176,25 +193,25 @@ export default function ProviderProfile() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h1 className="text-xl font-bold text-gray-900 dark:text-dark-text heading-font">{p.business}</h1>
-                      {p.badge && (
+                      <h1 className="text-xl font-bold text-gray-900 dark:text-dark-text heading-font">{provider.business}</h1>
+                      {provider.badge && (
                         <span className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-bold px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-500/30">
-                          ★ {p.badge}
+                          ★ {provider.badge}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-dark-muted mb-2">{p.name} · {p.title}</p>
+                    <p className="text-sm text-gray-500 dark:text-dark-muted mb-2">{provider.name} · {provider.title}</p>
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="flex items-center gap-1.5">
-                        <StarsRow rating={p.rating} size={14}/>
-                        <span className="font-bold text-sm text-gray-900 dark:text-dark-text">{p.rating.toFixed(1)}</span>
-                        <span className="text-xs text-[#0059B2] dark:text-blue-400 font-medium">({p.reviews} avis)</span>
+                        <StarsRow rating={provider.rating} size={14}/>
+                        <span className="font-bold text-sm text-gray-900 dark:text-dark-text">{provider.rating.toFixed(1)}</span>
+                        <span className="text-xs text-[#0059B2] dark:text-blue-400 font-medium">({provider.reviews} avis)</span>
                       </div>
                       <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-dark-muted">
-                        <Users size={11}/>{p.hired} recrutements
+                        <Users size={11}/>{provider.hired} recrutements
                       </span>
                       <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-dark-muted">
-                        <MapPin size={11} className="text-[#0059B2]"/>{p.location}
+                        <MapPin size={11} className="text-[#0059B2]"/>{provider.location}
                       </span>
                     </div>
                   </div>
@@ -206,7 +223,7 @@ export default function ProviderProfile() {
             <div className="bg-white dark:bg-dark-surface rounded-2xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-dark-border fade-up" style={{animationDelay:'.05s'}}>
               <h2 className="text-sm font-bold text-gray-900 dark:text-dark-text mb-4">Vérifications & licences</h2>
               <div className="flex flex-wrap gap-2">
-                {p.credentials.map((c: string, i: number) => (
+                {provider.credentials.map((c: string, i: number) => (
                   <div key={i} className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium px-3 py-1.5 rounded-full">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
                       <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -220,12 +237,12 @@ export default function ProviderProfile() {
             {/* About */}
             <div className="bg-white dark:bg-dark-surface rounded-2xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-dark-border fade-up" style={{animationDelay:'.1s'}}>
               <h2 className="text-sm font-bold text-gray-900 dark:text-dark-text mb-3">Introduction</h2>
-              <p className="text-sm text-gray-600 dark:text-dark-muted leading-relaxed mb-5">{p.intro}</p>
+              <p className="text-sm text-gray-600 dark:text-dark-muted leading-relaxed mb-5">{provider.intro}</p>
 
               <div className="border-t border-gray-100 dark:border-dark-border pt-4 mb-4">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-dark-text mb-3">Services proposés</h3>
                 <div className="flex flex-wrap gap-2">
-                  {p.services.map((s: string, i: number) => (
+                  {provider.services.map((s: string, i: number) => (
                     <span key={i} className="bg-blue-50 dark:bg-blue-500/10 text-[#0059B2] dark:text-blue-400 text-xs font-medium px-3 py-1.5 rounded-full">
                       {s}
                     </span>
@@ -235,9 +252,9 @@ export default function ProviderProfile() {
 
               <div className="border-t border-gray-100 dark:border-dark-border pt-4 flex flex-wrap gap-4">
                 {[
-                  { icon: <Zap size={13} className="text-[#0059B2]"/>,      label: p.responseTime },
-                  { icon: <Calendar size={13} className="text-[#0059B2]"/>, label: `Membre depuis ${p.memberSince}` },
-                  { icon: <Users size={13} className="text-[#0059B2]"/>,    label: `${p.hired} clients` },
+                  { icon: <Zap size={13} className="text-[#0059B2]"/>,      label: provider.responseTime },
+                  { icon: <Calendar size={13} className="text-[#0059B2]"/>, label: `Membre depuis ${provider.memberSince}` },
+                  { icon: <Users size={13} className="text-[#0059B2]"/>,    label: `${provider.hired} clients` },
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-dark-muted">
                     {item.icon}{item.label}
@@ -249,8 +266,8 @@ export default function ProviderProfile() {
             {/* FAQ */}
             <div className="bg-white dark:bg-dark-surface rounded-2xl p-5 sm:p-6 shadow-sm border border-gray-100 dark:border-dark-border fade-up" style={{animationDelay:'.15s'}}>
               <h2 className="text-sm font-bold text-gray-900 dark:text-dark-text mb-4">Questions fréquentes</h2>
-              {p.faq.map((item: any, i: number) => (
-                <div key={i} className={`${i < p.faq.length - 1 ? 'border-b border-gray-100 dark:border-dark-border' : ''}`}>
+              {provider.faq.map((item: any, i: number) => (
+                <div key={i} className={`${i < provider.faq.length - 1 ? 'border-b border-gray-100 dark:border-dark-border' : ''}`}>
                   <button
                     onClick={() => setOpenFaq(openFaq === i ? null : i)}
                     className="w-full flex justify-between items-center py-4 text-left"
@@ -274,9 +291,9 @@ export default function ProviderProfile() {
                 <div>
                   <h2 className="text-sm font-bold text-gray-900 dark:text-dark-text mb-1">Avis clients</h2>
                   <div className="flex items-center gap-2">
-                    <StarsRow rating={p.rating} size={16}/>
-                    <span className="text-2xl font-bold text-gray-900 dark:text-dark-text">{p.rating.toFixed(1)}</span>
-                    <span className="text-sm text-gray-500 dark:text-dark-muted">sur 5 · {p.reviews} avis</span>
+                    <StarsRow rating={provider.rating} size={16}/>
+                    <span className="text-2xl font-bold text-gray-900 dark:text-dark-text">{provider.rating.toFixed(1)}</span>
+                    <span className="text-sm text-gray-500 dark:text-dark-muted">sur 5 · {provider.reviews} avis</span>
                   </div>
                 </div>
               </div>
@@ -320,12 +337,12 @@ export default function ProviderProfile() {
                 ))}
               </div>
 
-              {p.reviewsList.length > 2 && (
+              {provider.reviewsList.length > 2 && (
                 <button
                   onClick={() => setShowAll(!showAll)}
                   className="w-full mt-4 py-2.5 border border-gray-200 dark:border-dark-border rounded-xl text-sm font-semibold text-gray-700 dark:text-dark-text hover:bg-gray-50 dark:hover:bg-dark-border transition-colors"
                 >
-                  {showAll ? 'Voir moins' : `Voir les ${p.reviews} avis`}
+                  {showAll ? 'Voir moins' : `Voir les ${provider.reviews} avis`}
                 </button>
               )}
             </div>
@@ -340,13 +357,13 @@ export default function ProviderProfile() {
               <div className="bg-white dark:bg-dark-surface rounded-2xl p-5 shadow-md border border-gray-100 dark:border-dark-border fade-up">
                 <p className="text-xs text-gray-400 dark:text-dark-muted mb-1">À partir de</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-dark-text mb-1">
-                  {p.price}
-                  <span className="text-sm font-normal text-gray-400 dark:text-dark-muted"> / {p.priceNote}</span>
+                  {provider.price}
+                  <span className="text-sm font-normal text-gray-400 dark:text-dark-muted"> / {provider.priceNote}</span>
                 </p>
 
                 <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl px-3 py-2.5 mb-4 mt-3">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"/>
-                  <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{p.responseTime}</span>
+                  <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{provider.responseTime}</span>
                 </div>
 
                 <button onClick={() => handleAuthAction(() => setQuoteStep(1))}
@@ -396,7 +413,7 @@ export default function ProviderProfile() {
                   </svg>
                 </div>
                 <h3 className="text-base font-bold text-gray-900 dark:text-dark-text mb-1">Demande envoyée !</h3>
-                <p className="text-sm text-gray-500 dark:text-dark-muted mb-4">{p.name} vous répondra dans les plus brefs délais.</p>
+                <p className="text-sm text-gray-500 dark:text-dark-muted mb-4">{provider.name} vous répondra dans les plus brefs délais.</p>
                 <button onClick={() => setQuoteStep(0)} className="text-sm text-[#0059B2] dark:text-blue-400 font-semibold hover:underline">
                   Retour au profil
                 </button>
@@ -406,9 +423,9 @@ export default function ProviderProfile() {
             {/* Stats mini card */}
             <div className="bg-white dark:bg-dark-surface rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-dark-border fade-up" style={{animationDelay:'.05s'}}>
               {[
-                { label: 'Recrutements', value: p.hired,              icon: <Users size={14} className="text-[#0059B2]"/>    },
-                { label: 'Note',         value: `${p.rating.toFixed(1)}/5`, icon: <Star  size={14} className="text-yellow-400 fill-yellow-400"/> },
-                { label: 'Avis',         value: p.reviews,            icon: <MessageCircle size={14} className="text-[#0059B2]"/>},
+                { label: 'Recrutements', value: provider.hired,              icon: <Users size={14} className="text-[#0059B2]"/>    },
+                { label: 'Note',         value: `${provider.rating.toFixed(1)}/5`, icon: <Star  size={14} className="text-yellow-400 fill-yellow-400"/> },
+                { label: 'Avis',         value: provider.reviews,            icon: <MessageCircle size={14} className="text-[#0059B2]"/>},
               ].map((stat, i) => (
                 <div key={i} className={`flex justify-between items-center py-3 ${i < 2 ? 'border-b border-gray-50 dark:border-dark-border' : ''}`}>
                   <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-dark-muted">
@@ -426,4 +443,5 @@ export default function ProviderProfile() {
       </div>
     </div>
   );
+  
 }

@@ -81,8 +81,6 @@ const SORTS  = [
   { val: 'price_desc',  label: 'Prix décroissant'},
 ];
 const RATINGS = [
-  { val: 0,   label: 'Toutes les notes' },
-  { val: 4,   label: '4+ ⭐'            },
   { val: 4.5, label: '4.5+ ⭐'          },
   { val: 4.8, label: '4.8+ ⭐'          },
 ];
@@ -304,11 +302,9 @@ export default function ServiceProviders() {
                         <MapPin size={11} className="text-[#0059B2]"/>{p.location}
                       </span>
                     </div>
-
                     <p className="text-sm text-gray-600 dark:text-dark-muted leading-relaxed mb-3 line-clamp-2">
                       {p.description}
                     </p>
-
                     <div className="flex flex-wrap gap-2 items-center">
                       {p.tags.map((tag, ti) => (
                         <span key={ti} className="bg-blue-50 dark:bg-blue-500/10 text-[#0059B2] dark:text-blue-400 text-xs font-medium px-2.5 py-1 rounded-full">

@@ -6,6 +6,8 @@ import { registerPrestataire } from "../../services/Auth/authRegisterPrestataire
 import AuthBackground from "../../components/AuthBackground";
 import {getStats} from "../../services/provider/getStats";
 import { getUpcoming } from "../../services/provider/upComing";
+import { getLatest } from "../../services/provider/latest";
+import { getTopPrestataires } from "../../services/provider/bestPrest";
 
 const ADRESSES_AUTORISEES = [
   "Casablanca",
@@ -16,6 +18,11 @@ const ADRESSES_AUTORISEES = [
   "Fes",
   "Oujda",
 ];
+type Prestataire = {
+  nom: string;
+  note:number;
+  specialite:string;
+}
 const PrestataireRegister: React.FC = () => {
   const [formData, setFormData] = useState({
     nomComplet: "",
@@ -34,10 +41,14 @@ const PrestataireRegister: React.FC = () => {
     revenus:0,
     rdvToday:0,
   })
+  const[topPrestataires,setTopPrestataires] = useState<Prestataire[]>([]);
+  const [loadingTop,setLoadingTop] = useState(true);
+  const [recentClients,setRecentClients] = useState<any[]>([]);
+  const [latest,setLatest] = useState<any>(null);
   const [upcoming,setUpcoming] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
+  const [loadingUpcoming, setLoadingUpcoming] = useState(true);
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -61,6 +72,11 @@ const PrestataireRegister: React.FC = () => {
 
     if (formData.password !== formData.confirmPassword) {
       setErrorMessage("Les mots de passe ne correspondent pas.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setErrorMessage("Email invalide.");
       return;
     }
     const phoneRegex = /^[0-9]{10}$/;
@@ -95,50 +111,7 @@ const PrestataireRegister: React.FC = () => {
       setLoading(false);
     }
   };
-
-  const previews = [
-    {
-      name: "Studio BlackCut",
-      location: "Rabat",
-      rating: 4.6,
-      description: "Salon moderne proposant des coupes tendance.",
-      services: ["Coupes", "Barbe", "Planning flexible"],
-      avatar:
-        "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=100",
-      background:
-        "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=2000",
-    },
-    {
-      name: "Beauty Lounge",
-      location: "Casablanca",
-      rating: 4.8,
-      description: "Institut de beauté haut de gamme.",
-      services: ["Soins visage", "Manucure", "Massage"],
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100",
-      background:
-        "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=2000",
-    },
-    {
-      name: "FitPro Gym",
-      location: "Marrakech",
-      rating: 4.7,
-      description: "Salle de sport moderne et équipée.",
-      services: ["Coaching", "Musculation", "Cardio"],
-      avatar:
-        "https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=100",
-      background:
-        "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=2000",
-    },
-  ];
-
-  const [currentIndex, setCurrentIndex] = useState(0);
   
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % previews.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
   React.useEffect(() => {
     const fetchStats = async() => {
       try{
@@ -153,26 +126,47 @@ const PrestataireRegister: React.FC = () => {
   },[]);
 
   React.useEffect(() => {
-    const fetchUpcoming = async() => {
+  const fetchUpcoming = async () => {
+    try {
+      setLoadingUpcoming(true);
+      const data = await getUpcoming(1);
+      setUpcoming(data);
+
+      const uniqueCLients = Array.from(
+        new Map(data.map((item:any) => [item.client,item])).values());
+        setRecentClients(uniqueCLients.slice(0,2));
+      } catch (error) {
+      console.log(error);
+    } finally {
+      setLoadingUpcoming(false);
+    }
+  };
+    fetchUpcoming();
+  }, []);
+  React.useEffect(() =>{
+    const fetchLatest = async() =>{
       try{
-        const data = await getUpcoming(1);
-        setUpcoming(data);
-      }catch(error){
-        console.log(error);
+        const data = await getLatest(1);
+        console.log("LATEST DATA:",data);
+        setLatest(data);
+      }catch(err){
+        console.log(err)
       }
     };
-    fetchUpcoming();
-  },[])
-  const current = previews[currentIndex];
-
-  const goToPrevious = () => {
-    setCurrentIndex((prev) => (prev - 1 + previews.length) % previews.length);
-  };
-
-  const goToNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % previews.length);
-  };
-
+    fetchLatest();
+  }, []);
+  React.useEffect(() => {
+    const fetchTop = async()=>{
+      try{
+        const data = await getTopPrestataires();
+        setTopPrestataires(data);
+        setLoadingTop(false);
+      }catch(err){
+        console.log(err);
+      }
+    };
+    fetchTop();
+  },[]);
   return (
     <div className="min-h-screen relative overflow-hidden  flex justify-center items-start md:items-center pt-32 md:pt-0 transition-all duration-500 ease-out">
       <AuthBackground/>
@@ -234,56 +228,100 @@ const PrestataireRegister: React.FC = () => {
       </div>
 
       {/* Appointments */}
-      <p className="text-xs text-blue-300 font-medium mb-2">Rendez-vous à venir</p>
-      {upcoming.map((rdv: any, index: number) => (
-          <div key={index} className="flex items-center gap-2 py-2 border-b border-white/10">
-            
-            <div className="w-7 h-7 rounded-full bg-blue-400 flex items-center justify-center text-white text-xs font-bold shrink-0">
-              {rdv.client?.charAt(0)}
-            </div>
+      <p className="text-xs text-blue-300 font-medium mb-2">
+        Rendez-vous à venir
+      </p>
 
+      {loadingUpcoming ? (
+        <p className="text-xs text-gray-300">Chargement...</p>
+        ):upcoming.length === 0 ? (
+        <p className="text-xs text-gray-300">
+          Aucun rendez-vous à venir
+        </p>
+        ):(
+        upcoming.slice(0,3).map((rdv: any, index: number) => (
+          <div
+            key={index}
+            className={`flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 transition-all duration-300 ${
+              index !== upcoming.length - 1 ? "border-b border-white/10" : ""
+            }`}
+          >
+            <div className="w-7 h-7 rounded-full bg-blue-400 flex items-center justify-center text-white text-xs font-bold shrink-0">
+              {rdv.client
+                ?.split(" ")
+                .map((n: string) => n[0])
+                .join("")
+                .substring(0, 2)
+                .toUpperCase()}
+            </div>
             <p className="text-xs text-white font-medium flex-1">
               {rdv.client}
             </p>
-
             <p className="text-xs text-blue-300">
-              {rdv.time}
+              {rdv.time?.slice(0,5)}
             </p>
-
-            <span className="text-[10px] bg-green-400/20 text-green-300 px-2 py-0.5 rounded-full">
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full ${
+                rdv.statut === "ACCEPTE"
+                  ? "bg-green-400/20 text-green-300"
+                  : rdv.statut === "REFUSE"
+                  ? "bg-red-400/20 text-red-300"
+                  : rdv.statut === "ANNULE"
+                  ? "bg-gray-400/20 text-gray-300"
+                  : "bg-yellow-400/20 text-yellow-300"
+              }`}
+            >
               {rdv.statut}
             </span>
 
           </div>
-        ))}
-    </div>
-
-    {/* Notification */}
-    <div className="relative z-10 bg-white/95 rounded-xl px-4 py-3 flex items-center gap-3">
-      <div className="w-2 h-2 bg-green-500 rounded-full shrink-0 animate-pulse" />
-      <p className="text-xs text-blue-900 font-medium flex-1">Nouveau rendez-vous — Karim T.</p>
-      <p className="text-xs text-gray-400">maintenant</p>
-    </div>
-
-    {/* Testimonials */}
-    <div className="relative z-10 flex flex-col gap-2">
-      {[
-        { initials: "DA", name: "Dr. Alami", quote: "+40 clients en 2 mois", img: "https://i.pravatar.cc/40?img=12" },
-        { initials: "SC", name: "Sara — Coiffeuse", quote: "Revenue x3 depuis Bookify", img: "https://i.pravatar.cc/40?img=45" },
-      ].map((t, i) => (
-        <div key={i} className="bg-white/8 border border-white/15 rounded-xl px-4 py-3 flex items-center gap-3">
-          <img src={t.img} alt={t.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
-          <div className="flex-1">
-            <p className="text-xs text-white font-medium">{t.name}</p>
-            <p className="text-xs text-blue-300 mt-0.5">{t.quote}</p>
-          </div>
-          <span className="text-yellow-400 text-xs">★★★★★</span>
+          ))
+        )}
         </div>
-      ))}
+
+            {/* Notification */}
+            <div className="relative z-10 bg-white/95 rounded-xl px-4 py-3 flex items-center gap-3">
+              <div className="w-2 h-2 bg-green-500 rounded-full shrink-0 animate-pulse" />
+              <p className="text-xs text-blue-900 font-medium flex-1">
+                {latest
+                  ? `Nouveau rendez-vous — ${latest.client} à ${latest.time}`
+                  : "Aucune notification"}
+              </p>
+              <p className="text-xs text-gray-400">maintenant</p>
+            </div>
+
+            {/* Testimonials */}
+            {topPrestataires.map((p, index) => (
+              <div className="flex items-center justify-between bg-white/5 hover:bg-white/10 transition p-3 rounded-xl mb-2">
+  
+  {/* LEFT */}
+  <div className="flex items-center gap-3">
+    <div className="w-9 h-9 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold">
+      {p.nom.charAt(0)}
     </div>
 
+    <div>
+      <p className="text-sm text-white font-semibold">
+        {p.nom}
+      </p>
+      <p className="text-xs text-blue-300">
+        {p.specialite || "Prestataire"}
+      </p>
+    </div>
   </div>
-</div>            
+
+  {/* RIGHT ⭐ */}
+  <div className="bg-yellow-400/10 px-3 py-1 rounded-full">
+    <p className="text-yellow-400 font-bold text-base">
+      ⭐ {p.note.toFixed(1)}
+    </p>
+  </div>
+
+</div>
+            ))}
+
+          </div>
+        </div>            
 
             {/* Right Side - Registration Form */}
             <div className="w-full flex justify-center ">

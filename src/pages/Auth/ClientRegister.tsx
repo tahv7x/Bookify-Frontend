@@ -4,6 +4,7 @@ import logo from "../../assets/LogoW.png";
 import { registerClient } from "../../services/Auth/authRegisterClientService";
 import { useNavigate } from "react-router-dom";
 import AuthBackground from "../../components/AuthBackground";
+import { getRandomPres } from "../../services/provider/randomPres";
 const ADRESSES_AUTORISEES = [
   "Casablanca",
   "Rabat",
@@ -24,13 +25,18 @@ const ClientRegister: React.FC = () => {
     confirmPassword: "",
   });
   const navigate = useNavigate();
+  const [loadingPres, setLoadingPres] = useState(true);
+  const [errorPres, setErrorPres] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const getAvatar = (name: string) =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff`;
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
-
+  const[previews,setPreviews] = useState<any[]>([]);
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -38,6 +44,13 @@ const ClientRegister: React.FC = () => {
       [name]: value,
     }));
   };
+  const getInitials = (name : string) => {
+    if(!name) return "PR";
+    const ignored = ["mr","ms","mrs","dr","mme"];
+    const parts = name.toLowerCase().split(" ").filter(p=>!ignored.includes(p))
+    if (parts.length === 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +67,11 @@ const ClientRegister: React.FC = () => {
     }
     if (formData.password !== formData.confirmPassword) {
       setErrorMessage("Les mots de passe ne correspondent pas");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setErrorMessage("Email invalide.");
       return;
     }
     const phoneRegex = /^[0-9]{10}$/;
@@ -88,54 +106,39 @@ const ClientRegister: React.FC = () => {
     }
   };
 
-  const previews = [
-    {
-      id: "studio-blackcut",
-      name: "Studio BlackCut",
-      location: "Rabat",
-      rating: 4.6,
-      description: "Salon moderne proposant des coupes tendance.",
-      services: ["Coupes", "Barbe", "Planning flexible"],
-      avatar:
-        "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=100",
-      background:
-        "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=2000",
-    },
-    {
-      id: "beauty-lounge",
-      name: "Beauty Lounge",
-      location: "Casablanca",
-      rating: 4.8,
-      description: "Institut de beauté haut de gamme.",
-      services: ["Soins visage", "Manucure", "Massage"],
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100",
-      background:
-        "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=2000",
-    },
-    {
-      id: "fitpro-gym",
-      name: "FitPro Gym",
-      location: "Marrakech",
-      rating: 4.7,
-      description: "Salle de sport moderne et équipée.",
-      services: ["Coaching", "Musculation", "Cardio"],
-      avatar:
-        "https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=100",
-      background:
-        "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=2000",
-    },
-  ];
+  
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
   React.useEffect(() => {
+    if (previews.length === 0) return;
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % previews.length);
     }, 4000);
     return () => clearInterval(interval);
-  }, []);
-
-  const current = previews[currentIndex];
+  }, [previews.length]);
+  React.useEffect(() =>{
+  const fetchPrestataires = async() =>{
+    try{
+      const data = await getRandomPres();
+      const formatted = data.map((p: any) => ({
+        id: p.id,
+        name: p.nom,
+        location: p.location,
+        rating: p.rating || 0,
+        description: p.description || "",
+        specialite: p.specialite ,
+      }));
+      setPreviews(formatted);
+    } catch (error) {
+      setErrorPres("Erreur chargement prestataires");
+    } finally {
+      setLoadingPres(false);
+    }
+  };
+  fetchPrestataires();
+}, []);
+  const current = previews.length > 0 ? previews[currentIndex] : null;
 
   const goToPrevious = () => {
     setCurrentIndex((prev) => (prev - 1 + previews.length) % previews.length);
@@ -146,7 +149,7 @@ const ClientRegister: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden  flex justify-center items-start md:items-center pt-32 md:pt-0 transition-all duration-500 ease-out">
+    <div className="min-h-screen relative overflow-hidden flex justify-center items-start md:items-center pt-32 md:pt-0 transition-all duration-500 ease-out">
       <AuthBackground/>
       {/* Logo - Top Left */}
       <div className="absolute top-[50px] right-5 z-20">
@@ -172,112 +175,126 @@ const ClientRegister: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-stretch">
             {/* Left Side - Preview Card (Plus grand) */}
             {/* Left Side */}
-<div className="hidden lg:flex justify-center items-start self-stretch">
-  <div className="relative rounded-2xl overflow-hidden shadow-2xl w-full h-full min-h-[600px]">
+            <div className="hidden lg:flex justify-center items-start self-stretch">
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl w-full h-full min-h-[600px] transition-all duration-500 hover:scale-[1.01]">
 
-    {/* Background images with fade transition */}
-    {previews.map((p, i) => (
-      <div key={i} className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
-        style={{
-          backgroundImage: `url('${p.background}')`,
-          opacity: i === currentIndex ? 1 : 0,
-          transform: "scale(1.05)",
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/70" />
-      </div>
-    ))}
-
-    {/* Decorative elements */}
-    <div className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full backdrop-blur-sm"
-      style={{ clipPath: "polygon(0 0, 100% 0, 100% 80%, 20% 100%)" }} />
-    <div className="absolute bottom-10 left-10 w-40 h-40 bg-purple-500/10 rounded-full backdrop-blur-sm" />
-
-    {/* Profile Card with fade transition */}
-    <div className="absolute inset-0 flex items-center justify-center">
-      {previews.map((p, i) => (
-        <div key={i} className="absolute w-[85%] max-w-lg transition-all duration-700"
-          style={{ opacity: i === currentIndex ? 1 : 0, transform: i === currentIndex ? 'translateY(0px) scale(1)' : 'translateY(20px) scale(0.97)' }}>
-          <div className="bg-white rounded-2xl shadow-2xl p-8 overflow-visible">
-
-            {/* Header */}
-            <div className="flex items-start justify-between mb-6">
-              <div className="flex items-center space-x-4">
-                <div className="relative">
-                  <img src={p.avatar} alt={p.name} className="w-16 h-16 rounded-full object-cover ring-4 ring-blue-100" />
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">{p.name}</h3>
-                  <div className="flex items-center space-x-1 text-sm text-gray-500">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                    </svg>
-                    <span>{p.location}</span>
+                {/* Background images with fade transition */}
+                {previews.map((p, i) => (
+                  <div key={i} className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
+                    style={{
+                      backgroundImage: `url('${p.background || "https://images.unsplash.com/photo-1492724441997-5dc865305da7"}')`,
+                      opacity: i === currentIndex ? 1 : 0,
+                      transform: "scale(1.05)",
+                          pointerEvents: i === currentIndex ? "auto" : "none"
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/70" />
                   </div>
+                ))}
+
+                {/* Decorative elements */}
+                <div className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full backdrop-blur-sm"
+                  style={{ clipPath: "polygon(0 0, 100% 0, 100% 80%, 20% 100%)" }} />
+                <div className="absolute bottom-10 left-10 w-40 h-40 bg-purple-500/10 rounded-full backdrop-blur-sm" />
+
+                {/* Profile Card with fade transition */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  {previews.map((p, i) => (
+                    <div key={i} className="absolute w-[85%] max-w-lg transition-all duration-700"
+                      style={{ opacity: i === currentIndex ? 1 : 0, transform: i === currentIndex ? 'translateY(0px) scale(1)' : 'translateY(20px) scale(0.97)' }}>
+                      <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.25)] p-8 border border-white/30 overflow-visible">
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-6">
+                          <div className="flex items-center space-x-4">
+                            <div className="relative">
+                              {p.avatar ? (
+                                <img
+                                  src={p.avatar}
+                                  alt={p.name}
+                                  className="w-16 h-16 rounded-full object-cover ring-4 ring-white shadow-lg"
+                                />
+                              ) : (
+                                <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg ring-4 ring-white shadow-lg">
+                                  {getInitials(p.name)}
+                                </div>
+                              )}
+                              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white" />
+                            </div>
+                            <div>
+                              <h3 className="text-xl font-bold text-gray-900">{p.name}</h3>
+                              <div className="flex items-center space-x-1 text-sm text-gray-500">
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                </svg>
+                                <span>{p.location}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-1 bg-amber-400 text-white px-3 py-1.5 rounded-xl text-sm font-bold shadow-md">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                            </svg>
+                            <span>{p.rating?.toFixed(1) || "0.0"}</span>
+                          </div>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent mb-5" />
+
+                        {/* Description */}
+                        <p className="text-gray-500 text-sm leading-relaxed mb-5">{p.specialite} • {p.description}</p>
+
+                        {/* Services */}
+                        <div className="space-y-2.5 mb-6">
+                          {p.services?.map((service:string , idx:number) => (
+                            <div key={idx} className="flex items-center space-x-3">
+                              <div className="flex-shrink-0 w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
+                                <svg className="w-3 h-3 text-[#0059B2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                </svg>
+                              </div>
+                              <span className="text-gray-700 text-sm font-medium">{service}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Button */}
+                        <button onClick={() => navigate(`/Service-Provider-Profile/${p.id}`)}
+                          className="w-full bg-gradient-to-r from-[#0059B2] via-[#0066cc] to-[#004a96]
+                            hover:from-[#004a96] hover:to-[#0059B2]
+                            text-white py-3.5 rounded-2xl font-semibold
+                            transition-all duration-300 shadow-xl hover:shadow-2xl
+                            transform hover:scale-[1.03] active:scale-[0.97]">             
+                          Voir le profil
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Navigation Arrows */}
+                <div className="absolute bottom-8 right-8 flex items-center space-x-3 z-10">
+                  <button onClick={goToPrevious} className="w-10 h-10 bg-white/20 backdrop-blur-sm hover:bg-white/40 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button onClick={goToNext} className="w-10 h-10 bg-white/20 backdrop-blur-sm hover:bg-white/40 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Indicators */}
+                <div className="absolute bottom-9 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
+                  {previews.map((_, index) => (
+                    <button key={index} onClick={() => setCurrentIndex(index)}
+                      className={`h-2 rounded-full transition-all duration-300 ${index === currentIndex ? 'w-8 bg-white' : 'w-2 bg-white/40'}`} />
+                  ))}
                 </div>
               </div>
-              <div className="flex items-center space-x-1 bg-amber-400 text-white px-3 py-1.5 rounded-xl text-sm font-bold shadow-md">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-                <span>{p.rating}</span>
-              </div>
             </div>
-
-            {/* Divider */}
-            <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent mb-5" />
-
-            {/* Description */}
-            <p className="text-gray-500 text-sm leading-relaxed mb-5">{p.description}</p>
-
-            {/* Services */}
-            <div className="space-y-2.5 mb-6">
-              {p.services.map((service, idx) => (
-                <div key={idx} className="flex items-center space-x-3">
-                  <div className="flex-shrink-0 w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
-                    <svg className="w-3 h-3 text-[#0059B2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <span className="text-gray-700 text-sm font-medium">{service}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Button */}
-            <button onClick={() => navigate(`/Service-Provider-Profile/${current.id}`)}
-              className="w-full bg-gradient-to-r from-[#0059B2] to-[#004a96] hover:from-[#004a96] hover:to-[#0059B2] text-white py-3.5 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer">             
-              Voir le profil
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-
-    {/* Navigation Arrows */}
-    <div className="absolute bottom-8 right-8 flex items-center space-x-3 z-10">
-      <button onClick={goToPrevious} className="w-10 h-10 bg-white/20 backdrop-blur-sm hover:bg-white/40 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110">
-        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-      </button>
-      <button onClick={goToNext} className="w-10 h-10 bg-white/20 backdrop-blur-sm hover:bg-white/40 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110">
-        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
-    </div>
-
-    {/* Indicators */}
-    <div className="absolute bottom-9 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
-      {previews.map((_, index) => (
-        <button key={index} onClick={() => setCurrentIndex(index)}
-          className={`h-2 rounded-full transition-all duration-300 ${index === currentIndex ? 'w-8 bg-white' : 'w-2 bg-white/40'}`} />
-      ))}
-    </div>
-  </div>
-</div>
 
             {/* Right Side - Registration Form */}
             <div className="w-full flex justify-center ">

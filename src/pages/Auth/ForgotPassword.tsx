@@ -35,6 +35,16 @@ const ForgotPassword: React.FC = () => {
 
   return (
       <div className="min-h-screen relative flex items-center justify-center px-4">
+        {loading && (
+          <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-20">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-10 border-4 border-[#0059B2] border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-[#0059B2] font-semibold text-sm">
+                Envoi en cours...
+              </p>
+            </div>
+          </div>
+        )}
     {/* Background */}
     <AuthBackground />
 
@@ -81,7 +91,14 @@ const ForgotPassword: React.FC = () => {
             ${loading ? "opacity-60 cursor-not-allowed" : ""}
           `}
           >    
-            {loading ? "Envoi en cours..." : "Envoyer le lien"}
+            {loading ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Envoi...</span>
+              </div>
+            ) : (
+              "Envoyer le lien"
+            )}
           </button>
 
           {errorMessage && (

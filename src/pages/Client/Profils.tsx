@@ -4,13 +4,13 @@ import TopBar from '../../components/Client/TopBar';
 import Footer from '../../components/Client/Footer';
 import { updateUser } from '../../services/Client/UpdateUser';
 import api from '../../services/api';
+import { uploadAvatar, deleteAvatar } from '../../services/Client/avatarService';
 import {
   User, Settings, Star, Calendar, ChevronRight,
   Camera, Edit3, Mail, Phone, MapPin, Lock,
   Bell, Shield, LogOut, Check, X, Eye, EyeOff, HelpCircle, Loader2, AlertCircle
 } from 'lucide-react';
 import AideModel from '../../components/AideModel';
-
 type ProfilePage = 'profile' | 'settings';
 interface UserData { firstName: string; lastName: string; email: string; phone: string; city: string; bio: string; }
 
@@ -21,7 +21,10 @@ const readFileAsDataURL = (file: File): Promise<string> =>
 const Avatar: React.FC<{ src: string | null; initials: string; size?: number; fontSize?: number; onClick?: () => void; showEditBadge?: boolean; loading?: boolean; }> =
   ({ src, initials, size = 88, fontSize = 32, onClick, showEditBadge = false, loading = false }) => (
   <div style={{ position: 'relative', display: 'inline-block' }} onClick={onClick}>
-    <div style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, cursor: onClick ? 'pointer' : 'default', position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 4px var(--tw-ring-color,#fff), 0 0 0 6px #e5e7eb', overflow: 'hidden' }}>
+      <div
+        className="ring-4 ring-white dark:ring-dark-bg ring-offset-2 ring-offset-gray-200 dark:ring-offset-dark-border"
+        style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, cursor: onClick ? 'pointer' : 'default', position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}
+      >      
       {loading ? <Loader2 size={size * 0.28} className="spin" style={{ color: '#0059B2' }} />
         : src ? <img src={src} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg,#0059B2,#1A6FD1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize, fontWeight: 700, color: '#fff' }}>{initials}</div>
@@ -29,8 +32,8 @@ const Avatar: React.FC<{ src: string | null; initials: string; size?: number; fo
       {onClick && !loading && <div className="avatar-hover-overlay"><Camera size={size * 0.2} color="#fff" /></div>}
     </div>
     {showEditBadge && !loading && (
-      <div style={{ position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: '50%', background: '#fff', border: '2px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: onClick ? 'pointer' : 'default' }}>
-        <Camera size={12} color="#6b7280" />
+      <div className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-[#0059B2] border-2 border-white dark:border-dark-surface flex items-center justify-center cursor-pointer">
+        <Camera size={12} color="#fff" />
       </div>
     )}
   </div>
@@ -60,15 +63,55 @@ const Profils: React.FC = () => {
   const MAX_MB = 5;
 
   const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
     setAvatarError(null);
     if (!ACCEPTED.includes(file.type)) { setAvatarError('Format non supporté.'); return; }
     if (file.size > MAX_MB * 1024 * 1024) { setAvatarError(`Max ${MAX_MB} MB.`); return; }
+    if (userId === null) { setAvatarError("Utilisateur introuvable."); return; }
     setAvatarLoading(true);
-    try { const url = await readFileAsDataURL(file); localStorage.setItem(AVATAR_KEY, url); setAvatarSrc(url); window.dispatchEvent(new Event('avatarUpdated')); }
-    catch { setAvatarError("Erreur lors du chargement."); } finally { setAvatarLoading(false); }
+    try{
+      const formData = new FormData();
+      formData.append('file',file);
+      const url = await uploadAvatar(userId,file);
+      console.log("AVATAR_URL =",url)
+      localStorage.setItem(AVATAR_KEY,url);
+      setAvatarSrc(url);
+      const userStr = localStorage.getItem('user');
+      if(userStr){
+        const user = JSON.parse(userStr);
+        user.avatar = url;
+        localStorage.setItem('user',JSON.stringify(user));
+      }
+      window.dispatchEvent(new Event('avatarUpdated'));
+    }catch(err:any){
+      setAvatarError(err?.response?.data?.message || "Erreur lors du chargement.");
+    }finally{
+      setAvatarLoading(false);
+    }
+
   };
-  const handleAvatarRemove = () => { localStorage.removeItem(AVATAR_KEY); setAvatarSrc(null); window.dispatchEvent(new Event('avatarUpdated')); };
+  const handleAvatarRemove = async () => { 
+    if(userId == null) return;
+    setAvatarLoading(true);
+    try{
+      await deleteAvatar(userId);
+      localStorage.removeItem(AVATAR_KEY);
+      setAvatarSrc(null);
+      const userStr = localStorage.getItem('user');
+      if(userStr){
+        const user = JSON.parse(userStr);
+        user.avatar = null;
+        localStorage.setItem('user',JSON.stringify(user));
+      }
+      window.dispatchEvent(new Event('avatarUpdated'));
+    }catch(err:any){
+      setAvatarError(err?.response?.data?.message || "Erreur lors de la suppression.");
+    }finally{
+      setAvatarLoading(false);
+    }
+  };
 
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
   const [pwError, setPwError] = useState<string | null>(null);
@@ -81,12 +124,29 @@ const Profils: React.FC = () => {
   const [formData, setFormData] = useState<UserData>({ ...userData });
 
   useEffect(() => {
-    const s = localStorage.getItem('user');
-    if (s) {
-      const u = JSON.parse(s); const names = (u.nomComplet||u.nom||'').split(' ');
-      const data: UserData = { firstName:names[0]||'', lastName:names.slice(1).join(' ')||'', email:u.email||'', phone:u.telephone||'', city:u.adresse||'', bio:localStorage.getItem('userBio')||'' };
-      setUserId(u.idUtilisateur??u.id??u.userId??u.Id??null); setUserName(u.nomComplet||u.nom||''); setUserData(data); setFormData(data);
+  const s = localStorage.getItem('user');
+  if (s) {
+    const u = JSON.parse(s);
+    const names = (u.nomComplet || u.nom || '').split(' ');
+    const data: UserData = {
+      firstName: names[0] || '',
+      lastName: names.slice(1).join(' ') || '',
+      email: u.email || '',
+      phone: u.telephone || '',
+      city: u.adresse || '',
+      bio: localStorage.getItem('userBio') || ''
+    };
+    setUserId(u.idUtilisateur ?? u.id ?? u.userId ?? u.Id ?? null);
+    setUserName(u.nomComplet || u.nom || '');
+    setUserData(data);
+    setFormData(data);
+    const storedAvatar = localStorage.getItem(AVATAR_KEY);
+    if (storedAvatar) {
+      setAvatarSrc(storedAvatar);
+    } else if (u.avatar) {
+      setAvatarSrc(u.avatar);
     }
+  }
   }, []);
 
   const initials = userData.firstName.charAt(0).toUpperCase() + (userData.lastName.charAt(0)||'').toUpperCase();
