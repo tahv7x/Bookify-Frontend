@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#F4F7FE] dark:bg-[#0f1117] transition-colors duration-300;
+  }
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus, 
+  input:-webkit-autofill:active {
+    transition: background-color 5000s ease-in-out 0s;
+    -webkit-text-fill-color: #0f1117;
+  }
+  
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover, 
+  .dark input:-webkit-autofill:focus, 
+  .dark input:-webkit-autofill:active {
+    transition: background-color 5000s ease-in-out 0s;
+    -webkit-text-fill-color: #ffffff;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.blur-span {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(10px);
+  animation: blurReveal 0.6s ease forwards;
+}
+
+.blur-span.show {
+  animation-play-state: running;
+}
+
+@keyframes blurReveal {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+@theme {
+  --font-poppins: "Poppins", sans-serif;
+  --font-fraunces: "Fraunces", serif;
+}
+
+@custom-variant dark (&:is(.dark *));
+
