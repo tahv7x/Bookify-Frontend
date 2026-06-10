@@ -1,9 +1,10 @@
 import React from 'react';
-import { User, LayoutDashboard, Home, Calendar, type LucideIcon } from 'lucide-react';
+import { User, LayoutDashboard, Home, Calendar, MessageSquare, Heart, Star, Search, type LucideIcon } from 'lucide-react';
 import logoLight from '../../assets/LogoB.png';
 import logoDark from '../../assets/LogoW.png';
 import { Link } from "react-router-dom";
 import { useTheme } from '../../context/ThemeContext';
+import { useUnreadMessages } from '../../hooks/useUnreadMessages';
 
 interface NavItem {
   id: string;
@@ -19,18 +20,23 @@ export interface NavbarProps {
 
 const navItems: NavItem[] = [
   { id: 'home',            label: 'Home',            icon: Home,          path: '/Home-Client' },
-  { id: 'dashboard',      label: 'Dashboard',        icon: LayoutDashboard, path: '/Dashboard-Client' },
-  { id: 'mes-rendez-vous',label: 'Mes Rendez-vous',  icon: Calendar,      path: '/Mes-Rendez-Vous' },
-  { id: 'profils',        label: 'Profils',          icon: User,          path: '/Profils' },
+  { id: 'explore',         label: 'Recherche',       icon: Search,        path: '/Explore' },
+  { id: 'dashboard',       label: 'Mon Espace',      icon: LayoutDashboard, path: '/Dashboard-Client' },
+  { id: 'mes-rendez-vous', label: 'Mes Rendez-vous', icon: Calendar,      path: '/Mes-Rendez-Vous' },
+  { id: 'messages',        label: 'Messages',        icon: MessageSquare, path: '/Messages' },
+  { id: 'favoris',         label: 'Favoris',         icon: Star,          path: '/Favoris' },
+  { id: 'profils',         label: 'Profils',         icon: User,          path: '/Profils' },
 ];
 
 const Navbar: React.FC<NavbarProps> = ({ activeSection, onSectionChange }) => {
   const { isDark } = useTheme();
+  const unreadMessagesCount = useUnreadMessages();
 
   return (
     <aside className="
       w-full h-full flex flex-col
-      bg-white/70 dark:bg-[#0B0F19]/60 backdrop-blur-xl
+      bg-white/70 dark:bg-[#0f1117]/60 backdrop-blur-xl
+      border-r border-white/60 dark:border-[#2d3148]
       transition-colors duration-200
     ">
       <style>{`
@@ -40,12 +46,10 @@ const Navbar: React.FC<NavbarProps> = ({ activeSection, onSectionChange }) => {
         .nav-item:hover {
           transform: translateX(4px);
         }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
       {/* Logo */}
-      <div className="h-16 flex items-center justify-center border-b border-gray-200/50 dark:border-white/5 shrink-0">
+      <div className="h-16 flex items-center justify-center border-b border-white/60 dark:border-[#2d3148] shrink-0">
         <Link to="/Home-Client">
           <img
             src={isDark ? logoDark : logoLight}
@@ -77,7 +81,12 @@ const Navbar: React.FC<NavbarProps> = ({ activeSection, onSectionChange }) => {
               {isActive && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-[#0059B2] dark:bg-blue-400 rounded-r-md shadow-[0_0_8px_#0059B2] dark:shadow-[0_0_8px_#60A5FA]" />
               )}
-              <Icon size={18} className={isActive ? "text-[#0059B2] dark:text-blue-400" : "text-gray-400 dark:text-gray-500"} />
+              <div className="relative">
+                <Icon size={18} className={isActive ? "text-[#0059B2] dark:text-blue-400" : "text-gray-400 dark:text-gray-500"} />
+                {item.id === 'messages' && unreadMessagesCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 border-2 border-white dark:border-[#0f1117] rounded-full shadow-sm" />
+                )}
+              </div>
               {item.label}
             </Link>
           );

@@ -1,9 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
     @apply bg-[#F4F7FE] dark:bg-[#0f1117] transition-colors duration-300;
   }
   input:-webkit-autofill,
@@ -57,3 +60,41 @@ html {
 
 @custom-variant dark (&:is(.dark *));
 
+.font-fraunces {
+  font-family: 'Fraunces', serif !important;
+}
+
+.heading-font {
+  font-family: 'Fraunces', serif !important;
+}
+
+/* Global Scrollbar Styles */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5); /* gray-400 */
+  border-radius: 10px;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.5); /* slate-600 */
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.8); /* gray-500 */
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.8); /* slate-500 */
+}
+
+.scrollbar-hide::-webkit-scrollbar { 
+  display: none; 
+}
+.scrollbar-hide { 
+  -ms-overflow-style: none; 
+  scrollbar-width: none; 
+  overflow-y: visible !important; 
+}

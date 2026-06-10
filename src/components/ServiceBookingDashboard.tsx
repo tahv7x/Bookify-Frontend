@@ -76,30 +76,6 @@ export default function ServiceBookingDashboard() {
     <div className={`min-h-screen ${isDarkMode ? 'dark' : ''}`}>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300 selection:bg-indigo-500/30">
         
-        {/* Custom Ultra-Thin Scrollbar Styles */}
-        <style dangerouslySetInnerHTML={{__html: `
-          .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(148, 163, 184, 0.2);
-            border-radius: 20px;
-          }
-          .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(51, 65, 85, 0.5);
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(148, 163, 184, 0.4);
-          }
-          .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(71, 85, 105, 0.8);
-          }
-        `}} />
-
         {/* STADIUM CAPSULE TOP NAVBAR */}
         <nav className="sticky top-0 z-40 px-4 py-4 pt-6">
           <div className="max-w-6xl mx-auto flex items-center justify-between">

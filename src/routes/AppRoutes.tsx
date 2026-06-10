@@ -8,15 +8,21 @@ import ForgotPassword from "../pages/Auth/ForgotPassword";
 import VerifyCode from "../pages/Auth/VerifyCode";
 import ResetPassword from "../pages/Auth/ResetPassword";
 import ProtectedRoute from "./ProtectedRoute";
-import DashboardClient from "../pages/Client/Dashboard";
+import PublicRoute from "./PublicRoute";
+import DashboardClient from "../pages/Client/EspaceC";
 import HomeC from "../pages/Client/Home";
 import MesRendezVous from "../pages/Client/MesRendezVous";
+import FavorisAvis from "../pages/Client/FavorisAvis";
+import Messages from "../pages/Client/Messages";
 import Profils from "../pages/Client/Profils";
+import Explore from "../pages/Client/Explore";
 import ServiceProviderProfile from "../components/Client/ProviderProfile";
 import HomeP from "../pages/Provider/Home";
 import DashboardProvider from "../pages/Provider/Dashboard";
 import ProfilsP from "../pages/Provider/Profils";
 import MesRendezVousP from "../pages/Provider/MesRendezVous";
+import Disponibilites from "../pages/Provider/Disponibilites";
+
 
 const PageWrapper = ({ children }: { children: React.ReactNode }) => (
   <motion.div
@@ -40,22 +46,31 @@ const AppRoutes = () => {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        <Route path="/"                    element={<PageWrapper><Home /></PageWrapper>} />
-        <Route path="/login"               element={<PageWrapper><Login /></PageWrapper>} />
-        <Route path="/PrestataireRegister" element={<PageWrapper><PrestataireRegister /></PageWrapper>} />
-        <Route path="/ClientRegister"      element={<PageWrapper><ClientRegister /></PageWrapper>} />
-        <Route path="/forgot-password"     element={<PageWrapper><ForgotPassword /></PageWrapper>} />
-        <Route path="/verify-code"         element={<PageWrapper><VerifyCode /></PageWrapper>} />
-        <Route path="/reset-password"      element={<PageWrapper><ResetPassword /></PageWrapper>} />
+        <Route path="/"                    element={<PublicRoute><PageWrapper><Home /></PageWrapper></PublicRoute>} />
+        <Route path="/login"               element={<PublicRoute><PageWrapper><Login /></PageWrapper></PublicRoute>} />
+        <Route path="/PrestataireRegister" element={<PublicRoute><PageWrapper><PrestataireRegister /></PageWrapper></PublicRoute>} />
+        <Route path="/ClientRegister"      element={<PublicRoute><PageWrapper><ClientRegister /></PageWrapper></PublicRoute>} />
+        <Route path="/forgot-password"     element={<PublicRoute><PageWrapper><ForgotPassword /></PageWrapper></PublicRoute>} />
+        <Route path="/verify-code"         element={<PublicRoute><PageWrapper><VerifyCode /></PageWrapper></PublicRoute>} />
+        <Route path="/reset-password"      element={<PublicRoute><PageWrapper><ResetPassword /></PageWrapper></PublicRoute>} />
 
         <Route path="/Home-Client" element={
           <ProtectedRoute allowedRole="CLIENT"><PageWrapper><HomeC /></PageWrapper></ProtectedRoute>
+        }/>
+        <Route path="/Explore" element={
+          <ProtectedRoute allowedRole="CLIENT"><PageWrapper><Explore /></PageWrapper></ProtectedRoute>
         }/>
         <Route path="/Dashboard-Client" element={
           <ProtectedRoute allowedRole="CLIENT"><PageWrapper><DashboardClient /></PageWrapper></ProtectedRoute>
         }/>
         <Route path="/Mes-Rendez-Vous" element={
           <ProtectedRoute allowedRole="CLIENT"><PageWrapper><MesRendezVous /></PageWrapper></ProtectedRoute>
+        }/>
+        <Route path="/Messages" element={
+          <ProtectedRoute><PageWrapper><Messages /></PageWrapper></ProtectedRoute>
+        }/>
+        <Route path="/Favoris" element={
+          <ProtectedRoute allowedRole="CLIENT"><PageWrapper><FavorisAvis /></PageWrapper></ProtectedRoute>
         }/>
         <Route path="/Profils" element={
           <ProtectedRoute allowedRole="CLIENT"><PageWrapper><Profils /></PageWrapper></ProtectedRoute>
@@ -76,6 +91,9 @@ const AppRoutes = () => {
         }/>
         <Route path="/Mes-Rendez-Vous-Provider" element={
           <ProtectedRoute allowedRole="PRESTATAIRE"><PageWrapper><MesRendezVousP /></PageWrapper></ProtectedRoute>
+        }/>
+        <Route path="/Disponibilites-Provider" element={
+          <ProtectedRoute allowedRole="PRESTATAIRE"><PageWrapper><Disponibilites /></PageWrapper></ProtectedRoute>
         }/>
 
       </Routes>

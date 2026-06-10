@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ChevronDown, LogOut, User, Search, Bell, Moon, Sun, Menu, X } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
+import { useUnreadMessages } from "../../hooks/useUnreadMessages";
 
 export interface TopBarProps {
   userName?: string;
@@ -21,8 +22,8 @@ const TopBar: React.FC<TopBarProps> = ({
   onMenuToggle,
   isMobileMenuOpen = false
 }) => {
-  // ✅ FIXED: use global theme context instead of local state
   const { isDark, toggleTheme } = useTheme();
+  const unreadMessagesCount = useUnreadMessages();
 
   const location = useLocation();
 
@@ -122,9 +123,12 @@ const TopBar: React.FC<TopBarProps> = ({
         <div className="flex items-center gap-4">
           <button
             onClick={onMenuToggle}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-border text-gray-700 dark:text-dark-text"
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-border text-gray-700 dark:text-dark-text relative"
           >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            {unreadMessagesCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 border-2 border-white dark:border-dark-surface rounded-full shadow-sm" />
+            )}
           </button>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-dark-text">
             {pageTitle}

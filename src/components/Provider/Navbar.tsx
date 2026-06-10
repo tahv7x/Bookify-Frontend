@@ -1,9 +1,10 @@
 import React from 'react';
-import { User, LayoutDashboard, Home, Calendar, type LucideIcon } from 'lucide-react';
+import { User, LayoutDashboard, Home, Calendar, MessageSquare, type LucideIcon } from 'lucide-react';
 import logoLight from '../../assets/LogoB.png';
 import logoDark from '../../assets/LogoW.png';
 import { Link } from "react-router-dom";
 import { useTheme } from '../../context/ThemeContext';
+import { useUnreadMessages } from '../../hooks/useUnreadMessages';
 
 interface NavItem {
   id: string;
@@ -20,12 +21,15 @@ export interface NavbarProps {
 const navItems: NavItem[] = [
   { id: 'homep',            label: 'Home',            icon: Home,          path: '/Home-Provider' },
   { id: 'dashboardp',      label: 'Dashboard',        icon: LayoutDashboard, path: '/Dashboard-Provider' },
-  { id: 'mes-rendez-vous',label: 'Mes Rendez-vous',  icon: Calendar,      path: '/Mes-Rendez-Vous' },
+  { id: 'mes-rendez-vous',label: 'Mes Rendez-vous',  icon: Calendar,      path: '/Mes-Rendez-Vous-Provider' },
+  { id: 'disponibilites',  label: 'Disponibilités',   icon: Calendar,      path: '/Disponibilites-Provider' },
+  { id: 'messages',        label: 'Messages',         icon: MessageSquare, path: '/Messages' },
   { id: 'profils',        label: 'Profils',          icon: User,          path: '/Profils-Provider' },
 ];
 
 const Navbar: React.FC<NavbarProps> = ({ activeSection, onSectionChange }) => {
   const { isDark } = useTheme();
+  const unreadMessagesCount = useUnreadMessages();
 
   return (
     <aside className="
@@ -77,7 +81,12 @@ const Navbar: React.FC<NavbarProps> = ({ activeSection, onSectionChange }) => {
               {isActive && (
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0059B2] dark:bg-blue-400 rounded-r-md" />
               )}
-              <Icon size={18} />
+              <div className="relative">
+                <Icon size={18} />
+                {item.id === 'messages' && unreadMessagesCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 border-2 border-white dark:border-dark-surface rounded-full shadow-sm" />
+                )}
+              </div>
               {item.label}
             </Link>
           );

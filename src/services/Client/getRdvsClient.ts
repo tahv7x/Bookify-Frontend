@@ -7,6 +7,7 @@ export const getClientAppointment = async (userId: number) => {
     id: r.idRendezVous,
     prestataire: r.prestataire?.nomComplet || 'Prestataire',
     specialty: r.prestataire?.specialite || '',
+    rawDate: r.dateDebut,
     date: new Date(r.dateDebut).toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: 'short',
@@ -17,16 +18,27 @@ export const getClientAppointment = async (userId: number) => {
       minute: '2-digit'
     }),
     location: r.prestataire?.adresse || 'Casablanca',
-    status: (r.statut || '').toUpperCase(), // مهم بزاف
-    avatar:
-      r.prestataire?.avatar ||
-      `https://i.pravatar.cc/150?img=${r.idRendezVous}`,
+    status: (r.statut || '').toUpperCase(),
+    avatar: r.prestataire?.avatar ,
     phone: r.prestataire?.telephone || '',
     service: r.service?.nom || '',
-    prix: r.service?.prix || 0
+    prix: r.service?.prix || 0,
+    idPres: r.prestataire?.idPres
   }));
 };
 
 export const cancelAppointment = async(rendezVousId:number)=>{
     await api.delete(`/rendezvous/${rendezVousId}`);
+};
+
+export const rescheduleAppointment = async (
+  rendezVousId: number,
+  dateDebut: string,
+  dateFin: string
+) => {
+  const res = await api.put(`/rendezvous/${rendezVousId}/reschedule`, {
+    dateDebut,
+    dateFin
+  });
+  return res.data;
 };
