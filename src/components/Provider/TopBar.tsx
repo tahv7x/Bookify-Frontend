@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ChevronDown, LogOut, User, Search, Bell, Moon, Sun, Menu, X } from "lucide-react";
+import { ChevronDown, LogOut, User, Search, Bell, Moon, Sun, Menu, X, CheckCircle2 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useUnreadMessages } from "../../hooks/useUnreadMessages";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 
 export interface TopBarProps {
   userName?: string;
@@ -24,24 +25,34 @@ const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const { isDark, toggleTheme } = useTheme();
   const unreadMessagesCount = useUnreadMessages();
-
   const location = useLocation();
+  const navigate = useNavigate();
 
   const firstName = userName.split(' ')[0];
-
   const pageTitles: Record<string, string> = {
-    '/Home-Client':      `Bonjour ${firstName}`,
-    '/Dashboard-Client': 'Dashboard',
-    '/Mes-Rendez-Vous':  'Mes Rendez-vous',
-    '/Profils':          'Mon Profil',
+    '/Home-Provider': `Acceuil`,
+    '/Dashboard-Provider': 'Dashboard',
+    '/Mes-Rendez-Vous-Provider': 'Mes Rendez-vous',
+    '/Profils-Provider': 'Mon Profil',
+    '/Disponibilites-Provider': 'Disponibilités',
+    '/Mes-Services-Provider': 'Mes Services',
+    '/Messages': 'Messages',
   };
   const pageTitle = pageTitles[location.pathname] ?? `Bonjour ${userName}`;
 
-  const [openNotif, setOpenNotif]     = useState(false);
-  const [openAvatar, setOpenAvatar]   = useState(false);
-  const navigate                      = useNavigate();
-  const [search, setSearch]           = useState("");
-  const [openSearch, setOpenSearch]   = useState(false);
+  const pageSubtitles: Record<string, string> = {
+    '/Home-Provider': "Voici ce qui se passe aujourd'hui",
+    '/Dashboard-Provider': "Analysez vos performances en temps réel",
+    '/Mes-Rendez-Vous-Provider': "Gérez votre planning et vos clients",
+    '/Profils-Provider': "Personnalisez votre vitrine professionnelle",
+    '/Disponibilites-Provider': "Définissez vos horaires de travail",
+    '/Mes-Services-Provider': "Gérez les prestations de votre catalogue",
+    '/Messages': "Échangez avec vos clients",
+  };
+  const pageSubtitle = pageSubtitles[location.pathname] ?? "Bienvenue sur votre espace Bookify";
+
+  const [openNotif, setOpenNotif] = useState(false);
+  const [openAvatar, setOpenAvatar] = useState(false);
 
   const [avatarSrc, setAvatarSrc] = useState<string | null>(
     () => localStorage.getItem('userAvatar')
@@ -66,41 +77,23 @@ const TopBar: React.FC<TopBarProps> = ({
   }, []);
 
   const avatarRef = useRef<HTMLDivElement>(null);
-  const notifRef  = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
 
-  const searchData = [
-    { id: 1, type: "service",  label: "Dentiste"           },
-    { id: 2, type: "service",  label: "Plombier"           },
-    { id: 3, type: "provider", label: "Dr. Youssef Alami"  },
-    { id: 4, type: "provider", label: "Coiffeur Casablanca"}
-  ];
 
   const notifications: Notification[] = [
-    { id: 1, title: "Nouveau rendez‑vous confirmé", time: "Il y a 5 min",   read: false },
-    { id: 2, title: "Message reçu d'un client",     time: "Il y a 1 heure", read: true  }
+    { id: 1, title: "Nouveau rendez‑vous confirmé", time: "Il y a 5 min", read: false },
+    { id: 2, title: "Message reçu d'un client", time: "Il y a 1 heure", read: true }
   ];
 
-  const filteredResults = searchData.filter(item =>
-    item.label.toLowerCase().includes(search.toLowerCase())
-  );
-
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node))
-        setOpenNotif(false);
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setOpenNotif(false);
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) setOpenAvatar(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (avatarRef.current && !avatarRef.current.contains(e.target as Node))
-        setOpenAvatar(false);
-    };
-    if (openAvatar) document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [openAvatar]);
 
   const getInitials = (name: string) => {
     const parts = name.trim().split(' ');
@@ -110,125 +103,147 @@ const TopBar: React.FC<TopBarProps> = ({
 
   const hasUnread = notifications.some(n => !n.read);
 
+  const dropdownVariants: Variants = {
+    hidden: { opacity: 0, y: 10, scale: 0.95, filter: "blur(4px)" },
+    visible: { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", transition: { type: "spring", stiffness: 300, damping: 24 } },
+    exit: { opacity: 0, y: 10, scale: 0.95, filter: "blur(4px)", transition: { duration: 0.2 } }
+  };
+
   return (
     <header className="
-      bg-white dark:bg-dark-surface
-      border-b border-gray-200 dark:border-dark-border
-      px-4 sm:px-6 lg:px-8 py-4 sticky top-0 z-30
-      transition-colors duration-200
-    ">
-      <div className="flex items-center justify-between">
+      backdrop-blur-[28px]
+      border-b
+      px-4 sm:px-6 py-4 sticky top-0 z-30
+      transition-colors duration-500
+      font-poppins
+    "
+      style={{
+        background: isDark ? 'rgba(13, 17, 23, 0.65)' : 'rgba(255, 255, 255, 0.45)',
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(200, 215, 255, 0.4)'
+      }}>
+      <div className="flex items-center justify-between w-full">
 
         {/* LEFT */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-5 relative z-50">
           <button
             onClick={onMenuToggle}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-border text-gray-700 dark:text-dark-text relative"
+            className={`p-2.5 rounded-2xl border shadow-sm transition-all duration-300 relative flex items-center justify-center ${
+              isMobileMenuOpen 
+                ? 'bg-[#0059B2] border-[#0059B2] text-white shadow-blue-500/20 shadow-lg rotate-90' 
+                : 'bg-white/50 dark:bg-[#1A1D24]/50 border-gray-200/50 dark:border-white/5 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-[#1A1D24] hover:shadow-md hover:scale-105'
+            }`}
           >
-            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            {unreadMessagesCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 border-2 border-white dark:border-dark-surface rounded-full shadow-sm" />
+            {isMobileMenuOpen ? <X size={22} className="-rotate-90" /> : <Menu size={22} />}
+            {unreadMessagesCount > 0 && !isMobileMenuOpen && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white dark:border-[#1A1D24] rounded-full animate-pulse" />
             )}
           </button>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-dark-text">
-            {pageTitle}
-          </h2>
+          
+          <div 
+            className={`flex flex-col justify-center transition-all duration-500 ease-[cubic-bezier(0.175,0.885,0.32,1.1)] origin-left ${
+              isMobileMenuOpen 
+                ? 'translate-x-12 opacity-0 sm:opacity-40 sm:translate-x-[260px] scale-95 sm:scale-100' 
+                : 'translate-x-0 opacity-100 scale-100'
+            }`}
+          >
+            <h2 className="text-xl sm:text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 tracking-tight leading-none mb-1.5" style={{ fontFamily: "'Fraunces', serif" }}>
+              {pageTitle}
+            </h2>
+            <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 leading-none hidden sm:block">
+              {pageSubtitle}
+            </p>
+          </div>
         </div>
 
         {/* RIGHT */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-3 sm:gap-4">
 
-          {/* Search */}
-          <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-dark-bg rounded-lg border border-gray-200 dark:border-dark-border">
-            <Search size={16} className="text-gray-400 dark:text-dark-muted" />
-            <input
-              type="search"
-              placeholder="Rechercher un service ou un pro..."
-              value={search}
-              onChange={e => { setSearch(e.target.value); setOpenSearch(true); }}
-              className="bg-transparent outline-none text-sm w-40 md:w-56 text-gray-700 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-muted"
-            />
-          </div>
-          {openSearch && search && (
-            <div className="absolute top-16 right-24 w-72 bg-white dark:bg-dark-surface rounded-xl shadow-xl border border-gray-200 dark:border-dark-border z-50">
-              {filteredResults.length === 0 ? (
-                <div className="p-6 text-sm text-gray-500 dark:text-dark-muted text-center">Aucun résultat trouvé</div>
-              ) : (
-                filteredResults.map(item => (
-                  <div
-                    key={item.id}
-                    className="px-4 py-3 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-border text-gray-700 dark:text-dark-text"
-                    onClick={() => { setOpenSearch(false); setSearch(""); }}
-                  >
-                    <span className="font-medium">{item.label}</span>
-                    <span className="ml-2 text-xs text-gray-400 dark:text-dark-muted">{item.type}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="p-2.5 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl hidden sm:flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all duration-300"
+          >
+            {isDark ? <Sun size={20} strokeWidth={2.5} /> : <Moon size={20} strokeWidth={2.5} />}
+          </button>
 
           {/* Notifications */}
           <div className="relative" ref={notifRef}>
             <button
-              onClick={() => setOpenNotif(!openNotif)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-dark-border rounded-lg relative"
+              onClick={() => { setOpenNotif(!openNotif); setOpenAvatar(false); }}
+              className={`p-2.5 rounded-xl relative transition-all duration-300 ${openNotif ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
             >
-              <Bell size={20} className="text-gray-600 dark:text-dark-text" />
-              {hasUnread && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />}
+              <Bell size={20} strokeWidth={2.5} />
+              {hasUnread && (
+                <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_0_2px_white] dark:shadow-[0_0_0_2px_#111318] animate-pulse" />
+              )}
             </button>
-            {openNotif && (
-              <div className="absolute right-0 mt-3 w-80 bg-white dark:bg-dark-surface rounded-xl shadow-xl border border-gray-200 dark:border-dark-border z-50">
-                <div className="p-4 font-semibold border-b border-gray-100 dark:border-dark-border text-gray-900 dark:text-dark-text">
-                  Notifications
-                </div>
-                <div className="max-h-72 overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
-                      <div className="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-4">
-                        <Bell className="text-blue-500" size={26} />
-                      </div>
-                      <h4 className="font-semibold text-gray-800 dark:text-dark-text text-base">Aucune notification</h4>
-                      <p className="text-sm text-gray-500 dark:text-dark-muted mt-1 max-w-[220px]">
-                        Vous n'avez aucun message ou alerte pour le moment.
-                      </p>
-                    </div>
-                  ) : (
-                    notifications.map(n => (
-                      <div
-                        key={n.id}
-                        className={`px-4 py-3 text-sm cursor-pointer transition-colors
-                          ${!n.read
-                            ? 'bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30'
-                            : 'hover:bg-gray-50 dark:hover:bg-dark-border'
-                          }`}
-                      >
-                        <p className="font-medium text-gray-800 dark:text-dark-text">{n.title}</p>
-                        <span className="text-xs text-gray-500 dark:text-dark-muted">{n.time}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
 
-          {/* ✅ FIXED: Dark mode button now calls toggleTheme from context */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-dark-border rounded-lg hidden sm:flex items-center justify-center text-gray-600 dark:text-dark-text transition-colors"
-          >
-            {isDark ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
+            <AnimatePresence>
+              {openNotif && (
+                <motion.div
+                  variants={dropdownVariants} initial="hidden" animate="visible" exit="exit"
+                  className="absolute right-0 mt-4 w-80 sm:w-96 backdrop-blur-[28px] rounded-3xl z-50 overflow-hidden"
+                  style={{
+                    background: isDark ? 'rgba(13, 17, 23, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+                    border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.09)' : 'rgba(200, 215, 255, 0.6)'}`,
+                    boxShadow: isDark
+                      ? '0 8px 48px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)'
+                      : '0 8px 48px rgba(30,60,180,0.08), inset 0 1px 0 rgba(255,255,255,1)'
+                  }}
+                >
+                  <div className="p-5 flex items-center justify-between border-b border-gray-100/50 dark:border-white/5">
+                    <h3 className="font-bold text-gray-900 dark:text-white text-base">Notifications</h3>
+                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2 py-1 rounded-md">{notifications.length} nouvelles</span>
+                  </div>
+                  <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
+                    {notifications.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                        <div className="w-16 h-16 rounded-full bg-gray-50 dark:bg-white/5 flex items-center justify-center mb-4">
+                          <Bell className="text-gray-400 dark:text-gray-500" size={28} />
+                        </div>
+                        <h4 className="font-bold text-gray-900 dark:text-white text-base">Rien de nouveau</h4>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-[220px]">
+                          Vous êtes à jour !
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-2 space-y-1">
+                        {notifications.map(n => (
+                          <div
+                            key={n.id}
+                            className={`p-3 rounded-2xl text-sm cursor-pointer transition-all duration-200
+                              ${!n.read
+                                ? 'bg-blue-50/50 dark:bg-blue-500/5 hover:bg-blue-100/50 dark:hover:bg-blue-500/10'
+                                : 'hover:bg-gray-50 dark:hover:bg-white/5'
+                              }`}
+                          >
+                            <div className="flex gap-3">
+                              <div className="mt-0.5">
+                                <div className={`w-2 h-2 rounded-full ${!n.read ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]' : 'bg-transparent'}`} />
+                              </div>
+                              <div>
+                                <p className={`text-sm ${!n.read ? 'font-bold text-gray-900 dark:text-white' : 'font-medium text-gray-600 dark:text-gray-300'}`}>{n.title}</p>
+                                <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 mt-1 block">{n.time}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Avatar dropdown */}
           <div className="relative" ref={avatarRef}>
             <button
               onClick={() => { setOpenAvatar(!openAvatar); setOpenNotif(false); }}
-              className="flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-dark-border rounded-lg p-1 transition-colors"
+              className="flex items-center gap-2.5 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
             >
               <div
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden flex items-center justify-center text-white font-semibold text-sm shadow-md cursor-pointer flex-shrink-0"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-sm shadow-[0_4px_10px_rgba(0,0,0,0.1)] cursor-pointer flex-shrink-0 border-2 border-white dark:border-[#111318]"
                 style={{ background: avatarSrc ? 'transparent' : 'linear-gradient(135deg,#0059B2,#1A6FD1)' }}
               >
                 {avatarSrc
@@ -238,58 +253,69 @@ const TopBar: React.FC<TopBarProps> = ({
               </div>
               <ChevronDown
                 size={16}
-                className={`text-gray-600 dark:text-dark-muted hidden sm:block transition-transform duration-200 ${openAvatar ? 'rotate-180' : ''}`}
+                strokeWidth={3}
+                className={`text-gray-400 dark:text-gray-500 hidden sm:block transition-transform duration-300 ${openAvatar ? 'rotate-180' : ''}`}
               />
             </button>
 
-            {openAvatar && (
-              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-dark-surface rounded-xl shadow-lg border border-gray-200 dark:border-dark-border py-2 z-50">
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-dark-border flex items-center gap-3">
-                  <div
-                    className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-white font-semibold text-sm flex-shrink-0"
-                    style={{ background: avatarSrc ? 'transparent' : 'linear-gradient(135deg,#0059B2,#1A6FD1)' }}
-                  >
-                    {avatarSrc
-                      ? <img src={avatarSrc} alt="avatar" className="w-full h-full object-cover" />
-                      : getInitials(userName)
-                    }
+            <AnimatePresence>
+              {openAvatar && (
+                <motion.div
+                  variants={dropdownVariants} initial="hidden" animate="visible" exit="exit"
+                  className="absolute right-0 mt-3 w-64 backdrop-blur-[28px] rounded-3xl z-50 overflow-hidden p-2"
+                  style={{
+                    background: isDark ? 'rgba(13, 17, 23, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+                    border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.09)' : 'rgba(200, 215, 255, 0.6)'}`,
+                    boxShadow: isDark
+                      ? '0 8px 48px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)'
+                      : '0 8px 48px rgba(30,60,180,0.08), inset 0 1px 0 rgba(255,255,255,1)'
+                  }}
+                >
+                  <div className="px-4 py-4 border-b border-gray-100/50 dark:border-white/5 flex items-center gap-3 mb-2">
+                    <div
+                      className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-base flex-shrink-0 shadow-sm"
+                      style={{ background: avatarSrc ? 'transparent' : 'linear-gradient(135deg,#0059B2,#1A6FD1)' }}
+                    >
+                      {avatarSrc ? <img src={avatarSrc} alt="avatar" className="w-full h-full object-cover" /> : getInitials(userName)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-gray-900 dark:text-white truncate">{userName}</p>
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">{userEmail}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-dark-text truncate">{userName}</p>
-                    <p className="text-xs text-gray-500 dark:text-dark-muted mt-0.5 truncate">{userEmail || 'Non renseigné'}</p>
+
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => { setOpenAvatar(false); navigate('/Profils-Provider'); }}
+                      className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-3"
+                    >
+                      <User size={18} className="text-gray-400" /> Mon profil
+                    </button>
+                    <button
+                      onClick={() => {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        localStorage.removeItem('userAvatar');
+                        navigate('/login');
+                      }}
+                      className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors flex items-center gap-3 mt-1"
+                    >
+                      <LogOut size={18} /> Se déconnecter
+                    </button>
                   </div>
-                </div>
-
-                <div className="py-1">
-                  <button
-                    onClick={() => { setOpenAvatar(false); navigate("/Profils"); }}
-                    className="w-full text-left px-4 py-2.5 flex items-center gap-3 text-sm text-gray-700 dark:text-dark-text font-medium hover:bg-gray-50 dark:hover:bg-dark-border transition-colors"
-                  >
-                    <User size={16} className="text-gray-500 dark:text-dark-muted" />
-                    Profil
-                  </button>
-                </div>
-
-                <div className="border-t border-gray-100 dark:border-dark-border pt-1 mt-1">
-                  <button
-                    onClick={() => {
-                      setOpenAvatar(false);
-                      localStorage.removeItem('user');
-                      localStorage.removeItem('userAvatar');
-                      navigate('/login');
-                    }}
-                    className="w-full text-left px-4 py-2.5 flex items-center gap-3 text-sm text-gray-700 dark:text-dark-text font-medium hover:bg-gray-50 dark:hover:bg-dark-border transition-colors"
-                  style={{color:"#ef4444"}}>
-                    <LogOut size={16} className = "color"style={{color:'#ef4444'}}/>
-                    Déconnexion
-                  </button>
-                </div>
-              </div>
-            )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
         </div>
       </div>
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.3); border-radius: 20px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); }
+      `}</style>
     </header>
   );
 };

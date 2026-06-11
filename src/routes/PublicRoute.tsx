@@ -15,10 +15,13 @@ const PublicRoute: React.FC<Props> = ({ children }) => {
                 return <Navigate to="/Home-Client" replace />;
             } else if (user.role === 'PRESTATAIRE') {
                 return <Navigate to="/Home-Provider" replace />;
+            } else {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
             }
-            return <Navigate to="/Home-Client" replace />;
         } catch (e) {
-            // If user JSON is invalid, allow them to view public routes
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
         }
     }
 

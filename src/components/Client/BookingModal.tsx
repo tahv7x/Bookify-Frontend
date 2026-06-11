@@ -299,7 +299,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, provider, 
                     )}
                   </div>
                   );
-                })}
+                })()}
 
                 {/* STEP 3: DETAILS */}
                 {currentStep === 2 && (

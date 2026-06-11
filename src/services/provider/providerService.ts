@@ -17,6 +17,10 @@ export const updateMyProviderProfile = async (data: {
     specialite?: string;
     bio?: string;
     categorie?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    enLocal?: boolean;
+    aDomicile?: boolean;
 }) => {
     const res = await api.put('prestataires/mine', data);
     return res.data;

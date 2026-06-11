@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Calendar, Clock, MapPin, Search, Filter, ChevronRight, X, Check, AlertCircle, Phone, Star, RefreshCw, Plus,MessageCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, Search, Filter, ChevronRight, X, Check, AlertCircle, Phone, Star, RefreshCw, Plus, MessageCircle, CalendarPlus } from 'lucide-react';
 import Navbar from '../../components/Client/Navbar';
 import TopBar from '../../components/Client/TopBar';
 import Footer from '../../components/Client/Footer';
@@ -10,6 +10,7 @@ import { getClientAppointment, cancelAppointment } from '../../services/Client/g
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from "../../context/ThemeContext";
 import RescheduleModal from '../../components/Client/RescheduleModal';
+import AddReviewModal from '../../components/Client/AddReviewModal';
 
 type Status = 'ACCEPTE' | 'EN_ATTENTE' | 'REFUSE' | 'ANNULE' | 'TERMINE';
 type Tab = 'all' | 'upcoming' | 'done' | 'refused';
@@ -146,6 +147,35 @@ const CancelModal: React.FC<CancelModalProps> = ({ appointment, onConfirm, onClo
 );
 
 /* ─── Main Component ─── */
+const generateGoogleCalendarUrl = (appt: any) => {
+  const text = encodeURIComponent(`Rendez-vous avec ${appt.prestataire} (${appt.specialty})`);
+  const details = encodeURIComponent(`Réservation via Bookify.`);
+  const location = encodeURIComponent(appt.location || '');
+
+  let startDate = '';
+  let endDate = '';
+  try {
+    const raw = appt.rawDate || appt.date; 
+    const d = new Date(`${raw}T${appt.time}:00`);
+    if(!isNaN(d.getTime())) {
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const dStr = `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
+      
+      const dEnd = new Date(d.getTime() + 60 * 60 * 1000);
+      const dEndStr = `${dEnd.getUTCFullYear()}${pad(dEnd.getUTCMonth() + 1)}${pad(dEnd.getUTCDate())}T${pad(dEnd.getUTCHours())}${pad(dEnd.getUTCMinutes())}${pad(dEnd.getUTCSeconds())}Z`;
+      
+      startDate = dStr;
+      endDate = dEndStr;
+    }
+  } catch(e) {}
+
+  let url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&details=${details}&location=${location}`;
+  if(startDate && endDate) {
+    url += `&dates=${startDate}/${endDate}`;
+  }
+  return url;
+};
+
 const MesRendezVous: React.FC = () => {
   const { theme } = useTheme();
   const [isSidebarOpen, setIsSidebarOpen]     = useState(false);
@@ -161,6 +191,8 @@ const MesRendezVous: React.FC = () => {
   const [selectedCancelId, setSelectedCancelId] = useState<number | null>(null);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [selectedRescheduleAppt, setSelectedRescheduleAppt] = useState<Appointment | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedReviewAppt, setSelectedReviewAppt] = useState<Appointment | null>(null);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('asc');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
@@ -190,7 +222,7 @@ const MesRendezVous: React.FC = () => {
       try {
         const u = JSON.parse(s);
         setUserName(u.nom || u.nomComplet || '');
-        fetchRdvs(u.idUtilisateur);
+        fetchRdvs(u.idUtilisateur || u.id);
       } catch (e) { /* empty */ }
     }
   }, []);
@@ -204,6 +236,16 @@ const MesRendezVous: React.FC = () => {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAppointments = () => {
+    const s = localStorage.getItem('user');
+    if (s) {
+      try {
+        const u = JSON.parse(s);
+        fetchRdvs(u.idUtilisateur || u.id);
+      } catch (e) { /* empty */ }
     }
   };
 
@@ -670,6 +712,18 @@ const MesRendezVous: React.FC = () => {
                                 <Phone size={14} />Appeler
                               </a>
 
+                              {appt.status === 'ACCEPTE' && (
+                                <a
+                                  href={generateGoogleCalendarUrl(appt)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={e => e.stopPropagation()}
+                                  className="flex items-center gap-1.5 px-4 py-2 bg-[#4285F4]/10 text-[#4285F4] rounded-xl text-xs font-bold hover:bg-[#4285F4] hover:text-white transition-all shadow-sm"
+                                >
+                                  <CalendarPlus size={14} />Agenda
+                                </a>
+                              )}
+
                               {canAct && (
                                 <>
                                   {appt.status === 'EN_ATTENTE' && (
@@ -703,7 +757,11 @@ const MesRendezVous: React.FC = () => {
 
                               {appt.status === 'TERMINE' && !appt.rating && (
                                 <button 
-                                  onClick={(e) => { e.stopPropagation(); toast.success("L'ajout d'avis sera disponible prochainement !"); }}
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setSelectedReviewAppt(appt);
+                                    setShowReviewModal(true);
+                                  }}
                                   className="flex items-center gap-1.5 px-4 py-2 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl text-xs font-bold hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white transition-all shadow-sm"
                                 >
                                   <Star size={14} />Laisser un avis
@@ -758,9 +816,12 @@ const MesRendezVous: React.FC = () => {
                       </div>
                       <a
                         href={`tel:${nextRdv.phone}`}
-                        className="flex items-center justify-center gap-2 bg-white text-[#1A6FD1] py-3.5 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors shadow-sm"
+                        className="relative overflow-hidden flex items-center justify-center gap-2 bg-white text-[#1A6FD1] py-3.5 rounded-xl font-bold text-sm transition-all shadow-sm hover:scale-[1.03] hover:shadow-[0_6px_20px_rgba(26,111,209,0.5)] active:scale-[0.97] group"
                       >
-                        <Phone size={16} />Contacter
+                        <span className="relative z-10 flex items-center gap-2 group-hover:text-white transition-colors duration-300">
+                          <MessageCircle size={16} />Contacter
+                        </span>
+                        <span className="ab solute inset-0 rounded-xl bg-gradient-to-r from-[#1A6FD1] to-[#0c5a7c] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       </a>
                     </>
                   ) : (
@@ -825,9 +886,44 @@ const MesRendezVous: React.FC = () => {
           </div>
         </motion.div>
 
-        <Footer />
-        <MobileBottomNav />
+        <AnimatePresence>
+          {showCancelModal && selectedCancelId && (
+            <CancelModal
+              appointment={appointments.find(a => a.id === selectedCancelId)!}
+              onConfirm={handleCancelConfirm}
+              onClose={() => { setShowCancelModal(false); setSelectedCancelId(null); }}
+              cancelling={cancellingId !== null}
+            />
+          )}
+        </AnimatePresence>
+
+        {selectedRescheduleAppt && (
+          <RescheduleModal
+            isOpen={showRescheduleModal}
+            onClose={() => { setShowRescheduleModal(false); setSelectedRescheduleAppt(null); }}
+            appointment={{
+              id: selectedRescheduleAppt.id,
+              prestataireId: selectedRescheduleAppt.idPres,
+              prestataireName: selectedRescheduleAppt.prestataire,
+              currentDate: selectedRescheduleAppt.rawDate || selectedRescheduleAppt.date,
+              currentTime: selectedRescheduleAppt.time
+            }}
+            onSuccess={loadAppointments}
+          />
+        )}
+
+        {selectedReviewAppt && (
+          <AddReviewModal
+            isOpen={showReviewModal}
+            onClose={() => { setShowReviewModal(false); setSelectedReviewAppt(null); }}
+            onSuccess={loadAppointments}
+            prestataireId={selectedReviewAppt.idPres}
+            rendezVousId={selectedReviewAppt.id}
+            prestataireName={selectedReviewAppt.prestataire}
+          />
+        )}
       </main>
+      <Footer />
     </div>
   );
 };

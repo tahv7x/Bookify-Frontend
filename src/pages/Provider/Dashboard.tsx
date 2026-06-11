@@ -1,7 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import Navbar from '../../components/Provider/Navbar';
-import TopBar from '../../components/Provider/TopBar';
-import Footer from '../../components/Provider/Footer';
 import {
   BarChart2, Users, Star, Calendar, TrendingUp,
   MoreHorizontal, AlignJustify, CheckCircle2, XCircle, Loader2
@@ -10,6 +7,8 @@ import { getMyProviderProfile } from '../../services/provider/providerService';
 import { getStats } from '../../services/provider/getStats';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import { useTheme } from '../../context/ThemeContext';
+import { motion } from 'framer-motion';
 
 // ─── SVG AREA CHART (Dynamic) ────────────────────────────────────────────────────────
 interface AreaChartData { month: string; v1: number; v2: number; }
@@ -47,7 +46,7 @@ const AreaChartSVG: React.FC<{ data: AreaChartData[] }> = ({ data }) => {
       </defs>
 
       {[0,0.25,0.5,0.75,1].map((t,i) => (
-        <line key={i} x1={pad.l} y1={(pad.t + t*iH).toFixed(1)} x2={pad.l+iW} y2={(pad.t + t*iH).toFixed(1)} stroke="#f3f4f6" strokeWidth="1" className="dark:stroke-dark-border" />
+        <line key={i} x1={pad.l} y1={(pad.t + t*iH).toFixed(1)} x2={pad.l+iW} y2={(pad.t + t*iH).toFixed(1)} stroke="#f3f4f6" strokeWidth="1" className="dark:stroke-white/5" />
       ))}
 
       <path d={toArea(p2)} fill="url(#svgG2)" className="hover:opacity-80 transition-opacity" />
@@ -128,7 +127,7 @@ const DonutChartSVG: React.FC<{ data: DonutChartData[] }> = ({ data }) => {
   return (
     <svg viewBox="0 0 140 130" className="w-full transition-all duration-500" style={{ height: 130 }}>
       {arcs.map((arc, i) => (
-        <path key={i} d={arc.d} fill={arc.color} stroke="white" strokeWidth="2" className="hover:opacity-80 transition-opacity cursor-pointer dark:stroke-dark-surface" />
+        <path key={i} d={arc.d} fill={arc.color} stroke="white" strokeWidth="2" className="hover:opacity-80 transition-opacity cursor-pointer dark:stroke-[#1A1D27]" />
       ))}
     </svg>
   );
@@ -136,24 +135,39 @@ const DonutChartSVG: React.FC<{ data: DonutChartData[] }> = ({ data }) => {
 
 // ─── KPI CARD ────────────────────────────────────────────────────────────────
 interface KpiCardProps { icon: React.ReactNode; label: string; value: string; dark?: boolean; }
-const KpiCard: React.FC<KpiCardProps> = ({ icon, label, value, dark }) => (
-  <div className={`rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 ${dark ? 'bg-gradient-to-br from-[#0059B2] to-[#1e3a8a]' : 'bg-white/80 backdrop-blur-md dark:bg-dark-surface border border-white/20 dark:border-dark-border'}`}>
-    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-inner ${dark ? 'bg-white/20' : 'bg-blue-50 dark:bg-blue-900/20'}`}>
-      {icon}
+const KpiCard: React.FC<KpiCardProps> = ({ icon, label, value, dark }) => {
+  const { isDark } = useTheme();
+  return (
+    <div className={`p-6 flex items-center gap-5 rounded-3xl border shadow-sm hover:shadow-lg hover:-translate-y-2 transition-all duration-300 will-change-transform backdrop-blur-lg ${dark ? (isDark ? 'bg-[#0059B2]/80 border-blue-500/20' : 'bg-[#0059B2] border-blue-600') : (isDark ? 'bg-[#1A1D24]/40 border-white/10 hover:bg-[#1A1D24]/60 hover:border-blue-400/60 hover:shadow-[0_0_35px_rgba(59,130,246,0.25)]' : 'bg-white/40 border-white hover:bg-white/60 hover:border-blue-500/50 hover:shadow-blue-500/20')}`}>
+      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${dark ? 'bg-white/20' : (isDark ? 'bg-blue-900/20' : 'bg-blue-50')}`}>
+        {icon}
+      </div>
+      <div>
+        <p className={`text-xs mb-1 font-medium tracking-wide uppercase ${dark ? 'text-blue-100' : (isDark ? 'text-gray-400' : 'text-gray-500')}`}>{label}</p>
+        <p className={`text-3xl font-extrabold leading-none ${dark ? 'text-white' : (isDark ? 'text-white' : 'text-[#0f2a5e]')}`} style={{ fontFamily: "'Fraunces', serif" }}>{value}</p>
+      </div>
     </div>
-    <div>
-      <p className={`text-xs mb-1 font-medium tracking-wide uppercase ${dark ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}`}>{label}</p>
-      <p className={`text-2xl font-extrabold leading-none ${dark ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{value}</p>
-    </div>
-  </div>
-);
+  );
+};
 
 // ─── CARD WRAPPER ─────────────────────────────────────────────────────────────
-const Card: React.FC<{ children: React.ReactNode; className?: string; style?: React.CSSProperties }> = ({ children, className = "", style }) => (
-  <div style={style} className={`bg-white/90 backdrop-blur-xl dark:bg-dark-surface rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none border border-gray-100/50 dark:border-dark-border p-6 transition-all duration-300 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] ${className}`}>
-    {children}
-  </div>
-);
+interface CardProps { children: React.ReactNode; className?: string; style?: React.CSSProperties; delay?: number; }
+const Card: React.FC<CardProps> = ({ children, className = "", style, delay = 0 }) => {
+  const { isDark } = useTheme();
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay }}
+      style={style} 
+      className={`rounded-3xl p-8 border backdrop-blur-lg transition-all duration-300 will-change-transform ${
+        isDark 
+          ? 'bg-[#1A1D24]/40 border-white/10 shadow-sm hover:border-blue-400/60 hover:shadow-[0_0_35px_rgba(59,130,246,0.25)] hover:bg-[#1A1D24]/60 hover:-translate-y-2' 
+          : 'bg-white/40 border-white shadow-sm hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/20 hover:-translate-y-2'
+      } ${className}`}
+    >
+      {children}
+    </motion.div>
+  );
+};
 
 // ─── CALENDAR (Static for visual) ─────────────────────────────────────────────
 const CAL_DAYS  = ["Lu","Ma","Me","Je","Ve","Sa","Di"];
@@ -168,8 +182,6 @@ const CAL_RANGE = [27,28,29,30];
 
 // ─── MAIN DASHBOARD ──────────────────────────────────────────────────────────
 const Dashboard: React.FC = () => {
-  const [activeSection, setActiveSection] = useState<string>('dashboardp');
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [providerProfile, setProviderProfile] = useState<any>(null);
   
   // Real data state
@@ -229,11 +241,9 @@ const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#F8FAFC] to-[#EFF6FF] dark:from-dark-bg dark:to-dark-surface flex items-center justify-center font-poppins" style={{ fontFamily: "'Poppins', sans-serif" }}>
-        <div className="flex flex-col items-center gap-4 bg-white/50 backdrop-blur-xl p-8 rounded-3xl shadow-xl dark:bg-dark-surface/50 border border-white/20">
-          <Loader2 className="w-12 h-12 text-[#0059B2] animate-spin" />
-          <p className="text-sm text-[#0059B2] font-semibold tracking-wide">Chargement du dashboard...</p>
-        </div>
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-12 h-12 text-[#0059B2] animate-spin mb-4" />
+        <p className="text-gray-500 font-medium">Chargement du dashboard...</p>
       </div>
     );
   }
@@ -266,202 +276,197 @@ const Dashboard: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#F4F7FE] dark:bg-[#0B0C10] text-gray-900 dark:text-gray-100 relative pb-20 lg:pb-0 overflow-x-hidden font-poppins selection:bg-blue-200 selection:text-blue-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      <style>{`
-        .anim-fade-in { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .anim-slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
+    <div className="relative min-h-screen">
+      <div className="relative z-0 pb-10">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="mb-10"
+        >
+          <h1 className="text-4xl md:text-5xl text-[#0f2a5e] dark:text-white mb-2" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>
+            Vue d'ensemble
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 font-medium text-lg">Analysez vos performances et gérez votre activité.</p>
+        </motion.div>
 
-      {isSidebarOpen && <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden transition-opacity" onClick={() => setIsSidebarOpen(false)} />}
-      
-      <div className={`fixed left-0 top-0 h-full w-64 bg-white/95 backdrop-blur-xl dark:bg-[#1A1D27]/95 border-r border-gray-100 dark:border-[#2D3148] transform transition-transform duration-400 ease-out z-50 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 shadow-2xl lg:shadow-none`}>
-        <Navbar activeSection="dashboardp" onSectionChange={s => { setActiveSection(s); setIsSidebarOpen(false); }} />
+        {/* KPI CARDS */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10"
+        >
+          <KpiCard dark icon={<BarChart2 size={24} className="text-white" />} label="Revenus (Mois)" value={`${stats.revenus} MAD`} />
+          <KpiCard icon={<Users size={24} className="text-[#0059B2] dark:text-blue-400" />} label="Rendez-vous" value={stats.rdvToday.toString()} />
+          <KpiCard icon={<Calendar size={24} className="text-emerald-600 dark:text-emerald-400" />} label="En attente" value={pendingRequests.length.toString()} />
+          <KpiCard icon={<Star size={24} className="text-yellow-600 dark:text-yellow-400" />} label="Note Globale" value={providerProfile?.note?.toFixed(1) || "N/A"} />
+        </motion.div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+        {/* AREA CHART */}
+        <Card className="lg:col-span-2" delay={0.3}>
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="text-2xl text-[#0f2a5e] dark:text-white" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>Évolution mensuelle</h3>
+              <p className="text-sm text-gray-500 font-medium mt-1">Rendez-vous vs Revenus (K)</p>
+            </div>
+            <button className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors"><MoreHorizontal size={20}/></button>
+          </div>
+          <AreaChartSVG data={areaData} />
+        </Card>
+
+        {/* BAR CHART */}
+        <Card delay={0.4}>
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="text-2xl text-[#0f2a5e] dark:text-white" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>Cette semaine</h3>
+              <p className="text-sm text-gray-500 font-medium mt-1">Nbr. de rendez-vous</p>
+            </div>
+            <button className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors"><MoreHorizontal size={20}/></button>
+          </div>
+          <BarChartSVG data={barData} />
+        </Card>
       </div>
 
-      <main className="min-h-screen transition-all duration-400 ease-out lg:ml-64 flex flex-col">
-        <TopBar userName={providerProfile?.user?.nomComplet || "Prestataire"} onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)} isMobileMenuOpen={isSidebarOpen} />
-
-        <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
-          <div className="mb-8 anim-slide-up" style={{ animationDelay: '0.1s' }}>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0f2a5e] dark:text-white tracking-tight">Vue d'ensemble</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">Bienvenue, voici l'état de votre activité aujourd'hui.</p>
-          </div>
-
-          {/* KPI CARDS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8 anim-slide-up" style={{ animationDelay: '0.2s' }}>
-            <KpiCard dark icon={<BarChart2 size={22} className="text-white" />} label="Revenus (Mois)" value={`${stats.revenus} MAD`} />
-            <KpiCard icon={<Users size={22} className="text-[#0059B2] dark:text-blue-400" />} label="Rendez-vous" value={stats.rdvToday.toString()} />
-            <KpiCard icon={<Calendar size={22} className="text-[#0059B2] dark:text-blue-400" />} label="En attente" value={pendingRequests.length.toString()} />
-            <KpiCard icon={<Star size={22} className="text-[#0059B2] dark:text-blue-400" />} label="Note Globale" value={providerProfile?.note?.toFixed(1) || "N/A"} />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* AREA CHART */}
-            <Card className="lg:col-span-2 anim-slide-up" style={{ animationDelay: '0.3s' }}>
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="font-bold text-lg text-gray-900 dark:text-white">Évolution mensuelle</h3>
-                  <p className="text-xs text-gray-500 font-medium mt-1">Rendez-vous vs Revenus (K)</p>
-                </div>
-                <button className="text-gray-400 hover:text-[#0059B2] transition-colors"><MoreHorizontal size={20}/></button>
-              </div>
-              <AreaChartSVG data={areaData} />
-            </Card>
-
-            {/* BAR CHART */}
-            <Card className="anim-slide-up" style={{ animationDelay: '0.4s' }}>
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="font-bold text-lg text-gray-900 dark:text-white">Activité de la semaine</h3>
-                  <p className="text-xs text-gray-500 font-medium mt-1">Nbr. de rendez-vous</p>
-                </div>
-                <button className="text-gray-400 hover:text-[#0059B2] transition-colors"><MoreHorizontal size={20}/></button>
-              </div>
-              <BarChartSVG data={barData} />
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <div className="lg:col-span-2 flex flex-col gap-6">
-              {/* RECENT APPOINTMENTS TABLE */}
-              <Card className="flex-1 anim-slide-up" style={{ animationDelay: '0.5s' }}>
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="font-bold text-lg text-gray-900 dark:text-white">Demandes récentes</h3>
-                  <button className="text-[#0059B2] dark:text-blue-400 text-sm font-semibold hover:underline bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-lg transition-colors">Voir tout</button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-gray-100 dark:border-dark-border text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wider">
-                        <th className="pb-3 font-semibold pl-2">Client</th>
-                        <th className="pb-3 font-semibold">Date & Heure</th>
-                        <th className="pb-3 font-semibold">Statut</th>
-                        <th className="pb-3 font-semibold text-right pr-2">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentRequests.map((req, i) => (
-                        <tr key={i} className="border-b border-gray-50 dark:border-dark-border/50 last:border-0 hover:bg-gray-50/50 dark:hover:bg-dark-border/20 transition-colors">
-                          <td className="py-4 pl-2 font-semibold text-sm text-gray-900 dark:text-gray-100">{req.name}<div className="text-xs text-gray-500 font-normal">{req.service}</div></td>
-                          <td className="py-4 text-sm text-gray-600 dark:text-gray-300">{req.date}<br/><span className="text-xs text-gray-400 font-medium">{req.time}</span></td>
-                          <td className="py-4">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                              req.statusCode === "EN_ATTENTE" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
-                              req.statusCode === "ACCEPTE" ? "bg-blue-100 text-[#0059B2] dark:bg-blue-900/30 dark:text-blue-400" :
-                              req.statusCode === "TERMINE" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
-                              "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                            }`}>
-                              {req.status}
-                            </span>
-                          </td>
-                          <td className="py-4 text-right pr-2">
-                            {req.statusCode === "EN_ATTENTE" ? (
-                              <div className="flex gap-2 justify-end">
-                                <button onClick={() => handleAccept(req.id)} className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:scale-105 transition-all flex items-center justify-center dark:bg-emerald-900/20 dark:text-emerald-400"><CheckCircle2 size={16} /></button>
-                                <button onClick={() => handleRefuse(req.id)} className="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:scale-105 transition-all flex items-center justify-center dark:bg-red-900/20 dark:text-red-400"><XCircle size={16} /></button>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 text-sm font-medium">-</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                      {recentRequests.length === 0 && (
-                        <tr><td colSpan={4} className="py-8 text-center text-gray-500 text-sm">Aucune demande récente.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-
-              {/* DONUT CHART */}
-              <Card className="anim-slide-up" style={{ animationDelay: '0.6s' }}>
-                <div className="flex justify-between items-center mb-6">
-                  <div>
-                    <h3 className="font-bold text-lg text-gray-900 dark:text-white">Répartition</h3>
-                    <p className="text-xs text-gray-500 font-medium mt-1">Par statut</p>
-                  </div>
-                  <button className="text-gray-400 hover:text-[#0059B2] transition-colors"><MoreHorizontal size={20}/></button>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <div className="w-1/2 flex justify-center"><DonutChartSVG data={donutData} /></div>
-                  <div className="w-1/2 flex flex-col gap-3">
-                    {donutData.map((d, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: d.color }} />
-                        <div className="flex-1 text-xs text-gray-600 dark:text-gray-300 font-medium">{d.name}</div>
-                        <div className="text-xs font-bold text-gray-900 dark:text-white">{d.value}%</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+        <div className="lg:col-span-2 flex flex-col gap-8">
+          {/* RECENT APPOINTMENTS TABLE */}
+          <Card className="flex-1" delay={0.5}>
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-2xl text-[#0f2a5e] dark:text-white" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>Demandes récentes</h3>
+              <button className="text-[#0059B2] dark:text-blue-400 text-sm font-bold hover:underline bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-xl transition-colors">Voir tout</button>
             </div>
-
-            {/* SIDE CALENDAR & UPCOMING */}
-            <div className="flex flex-col gap-6">
-              <Card className="anim-slide-up" style={{ animationDelay: '0.7s' }}>
-                <div className="flex justify-between items-center mb-5">
-                  <h3 className="font-bold text-lg text-gray-900 dark:text-white">Calendrier</h3>
-                  <button className="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 dark:bg-dark-border dark:hover:bg-gray-700 flex items-center justify-center transition-colors"><MoreHorizontal size={16} className="text-gray-500"/></button>
-                </div>
-                <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                  {CAL_DAYS.map(d => <div key={d} className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{d}</div>)}
-                </div>
-                <div className="flex flex-col gap-1">
-                  {CAL_WEEKS.map((w, wi) => (
-                    <div key={wi} className="grid grid-cols-7 gap-1 text-center">
-                      {w.map((d, di) => {
-                        const isRange = CAL_RANGE.includes(d);
-                        const isStart = d === CAL_RANGE[0];
-                        const isEnd = d === CAL_RANGE[CAL_RANGE.length - 1];
-                        return (
-                          <div key={di} className={`
-                            text-sm py-1.5 font-medium transition-colors cursor-pointer rounded-lg
-                            ${isRange ? 'bg-blue-50 text-[#0059B2] dark:bg-blue-900/30 dark:text-blue-400 font-bold' : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-dark-border'}
-                            ${isStart ? 'bg-[#0059B2] text-white shadow-md dark:bg-blue-500 dark:text-white' : ''}
-                            ${isEnd ? 'bg-[#0059B2] text-white shadow-md dark:bg-blue-500 dark:text-white' : ''}
-                          `}>
-                            {d}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-100 dark:border-white/5 text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wider">
+                    <th className="pb-4 font-semibold pl-2">Client</th>
+                    <th className="pb-4 font-semibold">Date & Heure</th>
+                    <th className="pb-4 font-semibold">Statut</th>
+                    <th className="pb-4 font-semibold text-right pr-2">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentRequests.map((req, i) => (
+                    <tr key={i} className="border-b border-gray-50 dark:border-white/5 last:border-0 hover:bg-white/60 dark:hover:bg-[#1A1D24]/80 transition-all duration-300">
+                      <td className="py-5 pl-2 font-bold text-sm text-[#0f2a5e] dark:text-white">{req.name}<div className="text-xs text-gray-500 font-medium mt-1">{req.service}</div></td>
+                      <td className="py-5 text-sm text-gray-600 dark:text-gray-300 font-medium">{req.date}<br/><span className="text-xs text-gray-400 mt-1 block">{req.time}</span></td>
+                      <td className="py-5">
+                        <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold ${
+                          req.statusCode === "EN_ATTENTE" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+                          req.statusCode === "ACCEPTE" ? "bg-blue-100 text-[#0059B2] dark:bg-blue-900/30 dark:text-blue-400" :
+                          req.statusCode === "TERMINE" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
+                          "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        }`}>
+                          {req.status}
+                        </span>
+                      </td>
+                      <td className="py-5 text-right pr-2">
+                        {req.statusCode === "EN_ATTENTE" ? (
+                          <div className="flex gap-2 justify-end">
+                            <button onClick={() => handleAccept(req.id)} className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white hover:shadow-lg hover:shadow-emerald-500/20 hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500 dark:hover:text-white"><CheckCircle2 size={18} /></button>
+                            <button onClick={() => handleRefuse(req.id)} className="w-9 h-9 rounded-xl bg-red-50 text-red-600 hover:bg-red-500 hover:text-white hover:shadow-lg hover:shadow-red-500/20 hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500 dark:hover:text-white"><XCircle size={18} /></button>
                           </div>
-                        );
-                      })}
-                    </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm font-medium">-</span>
+                        )}
+                      </td>
+                    </tr>
                   ))}
-                </div>
-              </Card>
-
-              <Card className="flex-1 anim-slide-up" style={{ animationDelay: '0.8s' }}>
-                <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-5">À venir</h3>
-                <div className="flex flex-col gap-4">
-                  {upcomingAppts.map((appt, i) => (
-                    <div key={i} className="flex gap-4 group cursor-pointer">
-                      <div className="flex flex-col items-center">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-[#0059B2] dark:text-blue-400 flex items-center justify-center font-bold text-sm shadow-inner group-hover:bg-[#0059B2] group-hover:text-white transition-all">
-                          {appt.time.split(':')[0]}
-                        </div>
-                        {i !== upcomingAppts.length - 1 && <div className="w-px h-full bg-gray-100 dark:bg-dark-border my-1" />}
-                      </div>
-                      <div className="pt-1 pb-4 flex-1 border-b border-gray-50 dark:border-dark-border/50 group-last:border-0 group-last:pb-1">
-                        <p className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-[#0059B2] transition-colors">{appt.name}</p>
-                        <p className="text-xs text-gray-500 font-medium mt-0.5">{appt.service}</p>
-                      </div>
-                    </div>
-                  ))}
-                  {upcomingAppts.length === 0 && (
-                    <p className="text-sm text-gray-500 text-center py-4">Aucun rendez-vous à venir.</p>
+                  {recentRequests.length === 0 && (
+                    <tr><td colSpan={4} className="py-10 text-center text-gray-500 text-sm font-medium">Aucune demande récente.</td></tr>
                   )}
-                </div>
-              </Card>
+                </tbody>
+              </table>
             </div>
-          </div>
+          </Card>
+
+          {/* DONUT CHART */}
+          <Card delay={0.6}>
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h3 className="text-2xl text-[#0f2a5e] dark:text-white" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>Répartition</h3>
+                <p className="text-sm text-gray-500 font-medium mt-1">Par statut des rendez-vous</p>
+              </div>
+              <button className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors"><MoreHorizontal size={20}/></button>
+            </div>
+            <div className="flex items-center justify-between gap-8">
+              <div className="w-1/2 flex justify-center"><DonutChartSVG data={donutData} /></div>
+              <div className="w-1/2 flex flex-col gap-4">
+                {donutData.map((d, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-3.5 h-3.5 rounded-full shadow-sm" style={{ backgroundColor: d.color }} />
+                    <div className="flex-1 text-sm text-gray-600 dark:text-gray-300 font-medium">{d.name}</div>
+                    <div className="text-sm font-bold text-[#0f2a5e] dark:text-white">{d.value}%</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
         </div>
 
-        <Footer/>
-      </main>
+        {/* SIDE CALENDAR & UPCOMING */}
+        <div className="flex flex-col gap-8">
+          <Card delay={0.7}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl text-[#0f2a5e] dark:text-white" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>Calendrier</h3>
+              <button className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors"><MoreHorizontal size={18} className="text-gray-500"/></button>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center mb-4">
+              {CAL_DAYS.map(d => <div key={d} className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{d}</div>)}
+            </div>
+            <div className="flex flex-col gap-2">
+              {CAL_WEEKS.map((w, wi) => (
+                <div key={wi} className="grid grid-cols-7 gap-1 text-center">
+                  {w.map((d, di) => {
+                    const isRange = CAL_RANGE.includes(d);
+                    const isStart = d === CAL_RANGE[0];
+                    const isEnd = d === CAL_RANGE[CAL_RANGE.length - 1];
+                    return (
+                      <div key={di} className={`
+                        text-sm py-2 font-semibold transition-colors cursor-pointer rounded-xl
+                        ${(isStart || isEnd) 
+                          ? 'bg-[#0059B2] text-white shadow-md dark:bg-blue-500 dark:text-white' 
+                          : isRange 
+                            ? 'bg-blue-50 text-[#0059B2] dark:bg-blue-900/30 dark:text-blue-400' 
+                            : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5'}
+                      `}>
+                        {d}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="flex-1" delay={0.8}>
+            <h3 className="text-2xl text-[#0f2a5e] dark:text-white mb-6" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>À venir</h3>
+            <div className="flex flex-col gap-5">
+              {upcomingAppts.map((appt, i) => (
+                <div key={i} className="flex gap-4 group cursor-pointer p-2 -mx-2 rounded-2xl hover:bg-white/60 dark:hover:bg-[#1A1D24]/80 transition-all duration-300">
+                  <div className="flex flex-col items-center">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/20 text-[#0059B2] dark:text-blue-400 flex items-center justify-center font-bold text-base shadow-sm group-hover:bg-gradient-to-br group-hover:from-blue-600 group-hover:to-indigo-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-blue-500/20 transition-all duration-300 group-hover:-translate-y-0.5">
+                      {appt.time.split(':')[0]}
+                    </div>
+                    {i !== upcomingAppts.length - 1 && <div className="w-px h-full bg-gray-100 dark:bg-white/5 my-2" />}
+                  </div>
+                  <div className="pt-1 pb-5 flex-1 border-b border-gray-50 dark:border-white/5 group-last:border-0 group-last:pb-1">
+                    <p className="text-base font-bold text-[#0f2a5e] dark:text-white group-hover:text-[#0059B2] transition-colors">{appt.name}</p>
+                    <p className="text-sm text-gray-500 font-medium mt-1">{appt.service}</p>
+                  </div>
+                </div>
+              ))}
+              {upcomingAppts.length === 0 && (
+                <p className="text-sm text-gray-500 font-medium text-center py-6 bg-gray-50 dark:bg-white/5 rounded-2xl">Aucun rendez-vous à venir.</p>
+              )}
+            </div>
+          </Card>
+        </div>
+      </div>
     </div>
+  </div>
   );
 };
 

@@ -8,6 +8,8 @@ export const registerPrestataire = async (formData: any) => {
     adresse: formData.address,
     password: formData.password,
     role: "PRESTATAIRE",
+    latitude: formData.latitude,
+    longitude: formData.longitude,
   });
 
   return res.data;

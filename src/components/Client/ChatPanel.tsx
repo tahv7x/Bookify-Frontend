@@ -55,7 +55,7 @@ export default function ChatPanel({ isOpen, onClose, provider }: ChatPanelProps)
       
       if (providerRef.current?.userId !== currentProvider.userId) return;
 
-      const mapped = data.map((m: any) => ({
+      const mapped: Message[] = data.map((m: any) => ({
         id: m.id,
         senderId: m.senderId === currentProvider.userId ? 'provider' : 'client',
         content: m.content,

@@ -4,14 +4,48 @@ import Navbar from '../../components/Client/Navbar';
 import TopBar from '../../components/Client/TopBar';
 import Footer from '../../components/Client/Footer';
 import MobileBottomNav from '../../components/Client/MobileBottomNav';
-import { Search, Filter, Star, MapPin, ChevronDown, Check, SlidersHorizontal, X } from 'lucide-react';
+import { MapPin, ChevronDown, Check, SlidersHorizontal, X, Map as MapIcon, Layers, Star, Search, Filter } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 import api from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
 
 const CATEGORIES = ['Tous', 'Santé & médical', 'Beauté & Bien-être', 'Services professionnels', 'Services techniques'];
-const CITIES = ['Toutes', 'Casablanca', 'Rabat', 'Marrakech', 'Tanger', 'Fès'];
+const CITIES = ['Toutes', 'Casablanca', 'Rabat', 'Marrakech', 'Tanger', 'Fès', 'Agadir', 'Salé', 'Meknès', 'Oujda'];
+
+const CITY_COORDINATES: Record<string, [number, number]> = {
+  'Casablanca': [33.5731, -7.5898],
+  'Rabat': [34.0209, -6.8416],
+  'Marrakech': [31.6295, -7.9811],
+  'Tanger': [35.7595, -5.8340],
+  'Fès': [34.0331, -5.0003],
+  'Agadir': [30.4278, -9.5981],
+  'Salé': [34.0389, -6.8166],
+  'Meknès': [33.8935, -5.5547],
+  'Oujda': [34.6814, -1.9086]
+};
+const DEFAULT_CENTER: [number, number] = [33.5731, -7.5898];
+
+function MapUpdater({ center }: { center: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, map.getZoom());
+  }, [center, map]);
+  return null;
+}
 
 const normalizeCategory = (cat: string): string => {
   if (!cat) return 'Tous';
@@ -63,12 +97,24 @@ const Explore: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [providers, setProviders] = useState<any[]>([]);
 
-  // Fetch Providers
+  // Fetch Providers Server-Side Search
   useEffect(() => {
     setIsLoading(true);
-      api.get('/prestataires/all')
-        .then(res => {
-          setProviders(res.data.map((p: any) => ({
+    const params: any = {};
+    if (searchQuery) params.q = searchQuery;
+    if (selectedCategory && selectedCategory !== 'Tous') params.category = selectedCategory;
+    if (selectedCity && selectedCity !== 'Toutes') params.city = selectedCity;
+    if (minRating > 0) params.minRating = minRating;
+    api.get('/prestataires/all', { params })
+      .then(res => {
+        setProviders(res.data.map((p: any) => {
+          let cityMatch = CITIES.find(c => p.location?.toLowerCase().includes(c.toLowerCase()));
+          if (!cityMatch || cityMatch === 'Toutes') cityMatch = 'Casablanca';
+          const baseCoord = CITY_COORDINATES[cityMatch] || DEFAULT_CENTER;
+          const lat = p.latitude ?? (baseCoord[0] + (Math.random() - 0.5) * 0.05);
+          const lng = p.longitude ?? (baseCoord[1] + (Math.random() - 0.5) * 0.05);
+
+          return {
             id: p.id,
             name: p.nom,
             specialty: p.specialite || 'Spécialiste',
@@ -78,12 +124,17 @@ const Explore: React.FC = () => {
             img: p.avatar,
             available: p.availableToday,
             price: 'Sur devis',
-            category: normalizeCategory(p.categorie)
-          })));
-        })
+            category: normalizeCategory(p.categorie),
+            lat,
+            lng,
+            enLocal: p.enLocal,
+            aDomicile: p.aDomicile
+          };
+        }));
+      })
       .catch(() => {})
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [searchQuery, selectedCategory, selectedCity, minRating]);
 
   // Mettre à jour l'URL quand la catégorie change
   useEffect(() => {
@@ -104,16 +155,10 @@ const Explore: React.FC = () => {
 
   // (Loading handled by API now)
 
-  // Filtrage des résultats
+  // Filtrage des résultats - Local filters (others handled by server)
   const filteredResults = providers.filter(p => {
-    const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                        p.specialty.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchCategory = selectedCategory === 'Tous' || p.category === selectedCategory; // Adjust logic if needed later
-    const matchCity = selectedCity === 'Toutes' || p.location.includes(selectedCity);
-    const matchRating = p.rating >= minRating;
     const matchAvailability = onlyAvailable ? p.available : true;
-
-    return matchSearch && matchCategory && matchCity && matchRating && matchAvailability;
+    return matchAvailability;
   });
 
   const FilterContent = () => (
@@ -239,6 +284,40 @@ const Explore: React.FC = () => {
           animation: shimmer 1.5s infinite linear;
           border-radius: 12px;
         }
+
+        /* LEAFLET POPUP OVERRIDES */
+        .leaflet-popup-content-wrapper {
+          background: ${isDark ? 'rgba(11, 15, 25, 0.75)' : 'rgba(255, 255, 255, 0.75)'} !important;
+          backdrop-filter: blur(16px) saturate(180%) !important;
+          -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+          color: ${isDark ? '#ffffff' : '#111827'} !important;
+          border-radius: 20px !important;
+          box-shadow: 0 10px 30px -5px rgba(0,0,0,0.15) !important;
+          padding: 0 !important;
+          overflow: hidden;
+          border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'} !important;
+        }
+        .leaflet-popup-content {
+          margin: 0 !important;
+          width: 250px !important;
+        }
+        .leaflet-popup-tip {
+          background: ${isDark ? 'rgba(11, 15, 25, 0.85)' : 'rgba(255, 255, 255, 0.85)'} !important;
+          backdrop-filter: blur(16px) saturate(180%) !important;
+          border-top: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'} !important;
+          border-left: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'} !important;
+        }
+        .leaflet-container a.leaflet-popup-close-button {
+          color: ${isDark ? '#9ca3af' : '#6b7280'} !important;
+          padding: 8px 8px 0 0 !important;
+          width: 24px !important;
+          height: 24px !important;
+          z-index: 10;
+        }
+        .leaflet-container a.leaflet-popup-close-button:hover {
+          color: ${isDark ? '#ffffff' : '#111827'} !important;
+          background: transparent !important;
+        }
       `}</style>
       
       {/* Sidebar Overlay */}
@@ -260,7 +339,7 @@ const Explore: React.FC = () => {
 
         {/* HERO SEARCH HEADER */}
         <div className="bg-white/80 dark:bg-[#0B0F19]/80 backdrop-blur-md border-b border-white/20 dark:border-[#151B2B] pt-10 pb-8 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-[1600px] mx-auto">
             <h1 className="text-3xl font-bold font-fraunces text-gray-900 dark:text-white mb-6 tracking-tight">Trouvez le prestataire idéal.</h1>
             <div className="flex gap-3">
               <div className="relative flex-1">
@@ -284,7 +363,7 @@ const Explore: React.FC = () => {
         </div>
 
         {/* CONTENT AREA */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex gap-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col lg:flex-row gap-6 lg:gap-8">
           
           {/* DESKTOP FILTERS SIDEBAR */}
           <aside className="hidden lg:block w-64 flex-shrink-0">
@@ -356,6 +435,19 @@ const Explore: React.FC = () => {
                       {provider.price}
                     </div>
 
+                    <div className="flex gap-2 mb-4">
+                      {provider.enLocal && (
+                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] rounded-md font-medium border border-blue-200 dark:border-blue-800/50">
+                          🏢 En Local
+                        </span>
+                      )}
+                      {provider.aDomicile && (
+                        <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-[10px] rounded-md font-medium border border-purple-200 dark:border-purple-800/50">
+                          🚗 À Domicile
+                        </span>
+                      )}
+                    </div>
+
                     <div className="mt-auto flex items-center justify-between pt-4 border-t border-gray-100 dark:border-[#2d3148]">
                       {provider.available ? (
                         <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
@@ -389,6 +481,74 @@ const Explore: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* MAP CONTAINER */}
+          <aside className="hidden xl:block w-[400px] 2xl:w-[500px] flex-shrink-0">
+            <div className="sticky top-32 h-[calc(100vh-140px)] rounded-3xl overflow-hidden glass-card border border-white/20 dark:border-white/5 shadow-xl relative z-10">
+              <MapContainer 
+                center={selectedCity && selectedCity !== 'Toutes' && CITY_COORDINATES[selectedCity] ? CITY_COORDINATES[selectedCity] : DEFAULT_CENTER} 
+                zoom={12} 
+                className="h-full w-full"
+                zoomControl={false}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  url={isDark 
+                    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                  }
+                />
+                <MapUpdater center={selectedCity && selectedCity !== 'Toutes' && CITY_COORDINATES[selectedCity] ? CITY_COORDINATES[selectedCity] : DEFAULT_CENTER} />
+                
+                {filteredResults.map(provider => (
+                  <Marker key={provider.id} position={[provider.lat, provider.lng]}>
+                    <Popup className="custom-popup" closeButton={false}>
+                      <div className="flex flex-col p-4 gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0" style={{ border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(200,215,255,0.5)'}` }}>
+                            {provider.img ? (
+                              <img src={provider.img} alt={provider.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-[#004a96] to-[#1A6FD1] text-white flex items-center justify-center font-bold text-lg">
+                                {provider.name?.charAt(0)}
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider"
+                              style={{
+                                background: isDark ? 'rgba(26,111,209,0.14)' : 'rgba(26,111,209,0.08)',
+                                color: isDark ? '#60a5fa' : '#1a6fd1',
+                                border: `1px solid ${isDark ? 'rgba(26,111,209,0.3)' : 'rgba(26,111,209,0.18)'}`,
+                              }}>
+                              {provider.specialty}
+                            </span>
+                            <h4 className="font-fraunces font-bold text-sm mt-1 truncate" style={{ color: isDark ? '#f1f5f9' : '#1a2540' }}>
+                              {provider.name}
+                            </h4>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Star size={10} className="text-amber-400 fill-amber-400" />
+                              <span className="text-[10px] font-bold" style={{ color: isDark ? '#f1f5f9' : '#1a2540' }}>
+                                {provider.rating}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <button 
+                          onClick={() => navigate(`/Service-Provider-Profile/${provider.id}`)}
+                          className="bg-gradient-to-r from-[#1A6FD1] to-[#0c5a7c] text-white px-3 py-2 rounded-xl font-semibold text-[11px] w-full transition-all hover:shadow-lg hover:shadow-blue-500/20 active:scale-[0.98]"
+                        >
+                          Voir profil
+                        </button>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MapContainer>
+            </div>
+          </aside>
         </div>
 
         <Footer />

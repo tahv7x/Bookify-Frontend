@@ -1,27 +1,16 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:5148/api/Favoris";
-
-const getAuthConfig = () => {
-  const token = localStorage.getItem("token");
-  return {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
-};
+import api from '../api';
 
 export const toggleFavori = async (idPres: number) => {
-  const response = await axios.post(`${API_URL}/toggle/${idPres}`, {}, getAuthConfig());
+  const response = await api.post(`/Favoris/toggle/${idPres}`);
   return response.data; // { isFavorited: boolean }
 };
 
 export const checkFavori = async (idPres: number) => {
-  const response = await axios.get(`${API_URL}/check/${idPres}`, getAuthConfig());
+  const response = await api.get(`/Favoris/check/${idPres}`);
   return response.data; // { isFavorited: boolean }
 };
 
 export const getMyFavorites = async () => {
-  const response = await axios.get(`${API_URL}/my-favorites`, getAuthConfig());
+  const response = await api.get(`/Favoris/my-favorites`);
   return response.data;
 };

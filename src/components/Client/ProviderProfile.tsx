@@ -3,11 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import {
   ChevronRight, ChevronLeft, BadgeCheck, MapPin, Zap, Users,
-  Calendar, MessageCircle, ChevronDown, ChevronUp, Send, Clock, Check, Shield, Award, HeartHandshake, Video, Heart
+  Calendar, MessageCircle, ChevronDown, ChevronUp, Send, Clock, Check, Shield, Award, HeartHandshake, Video, Heart, Star
 } from 'lucide-react';
 import { getDisponibilites } from '../../services/provider/disponibiliteService';
 import { getProviderProfile } from '../../services/provider/providerService';
 import { toggleFavori, checkFavori } from '../../services/Client/favorisService';
+import { getAvisByPrestataire } from '../../services/Client/avisService';
 import TopBar from '../../components/Client/TopBar';
 import Footer from '../../components/Client/Footer';
 import ChatPanel from '../../components/Client/ChatPanel';
@@ -116,20 +117,18 @@ export default function ProviderProfile() {
           badge: "Top Pro",
           // We keep only the avatar as the main photo if no gallery exists in DB
           photos: apiData.photos && apiData.photos.length > 0 ? apiData.photos : (apiData.avatar ? [apiData.avatar] : []),
-          reviewsList: [
-            { name: "Amine Benali", avatar: "https://ui-avatars.com/api/?name=Amine+Benali&background=0D8ABC&color=fff", rating: 5, date: "Il y a 2 semaines", text: "Excellent service ! Très professionnel et ponctuel. Je recommande vivement pour tous vos besoins." },
-            { name: "Sara Tazi", avatar: "https://ui-avatars.com/api/?name=Sara+Tazi&background=f43f5e&color=fff", rating: 4, date: "Il y a 1 mois", text: "Travail très propre et soigné. Le prix est correct vu la qualité de la prestation fournie." }
-          ],
+          reviewsList: [], // Will be filled
           credentials: ["Identité vérifiée", "Professionnel certifié"],
           faq: [
             { q: "Quels sont vos horaires de disponibilité ?", a: "Je suis disponible du lundi au samedi, de 9h00 à 18h00. Pour les urgences, n'hésitez pas à me contacter directement." },
             { q: "Comment se déroule le paiement ?", a: "Le paiement s'effectue après la prestation. Vous pouvez payer en espèces ou par virement bancaire." },
             { q: "Est-ce que vous vous déplacez à domicile ?", a: "Oui, je me déplace gratuitement dans un rayon de 20km. Au-delà, des frais de déplacement peuvent s'appliquer." }
           ],
-          price: apiData.services && apiData.services.length > 0 ? apiData.services[0].prix : 200,
           priceNote: "par prestation",
           responseTime: "Répond en moins d'une heure",
-          memberSince: "Janvier 2024"
+          memberSince: "Janvier 2024",
+          enLocal: apiData.enLocal,
+          aDomicile: apiData.aDomicile
         };
         setProvider(mappedProvider);
 
@@ -152,6 +151,22 @@ export default function ProviderProfile() {
           setAvailabilityData(grid);
         } catch (e) {
           console.error("Could not fetch availability", e);
+        }
+
+        // Fetch Avis
+        try {
+          const avis = await getAvisByPrestataire(Number(providerId));
+          mappedProvider.reviewsList = avis.map((a: any) => ({
+            id: a.id,
+            name: a.clientName,
+            avatar: a.clientAvatar ? a.clientAvatar : `https://ui-avatars.com/api/?name=${a.clientName}&background=0D8ABC&color=fff`,
+            rating: a.rating,
+            date: a.date,
+            text: a.comment
+          }));
+          mappedProvider.reviews = avis.length;
+        } catch (e) {
+          console.error("Could not fetch reviews", e);
         }
 
       }catch(err: any){
@@ -368,6 +383,16 @@ export default function ProviderProfile() {
                         <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-white/5 px-2.5 py-1.5 rounded-lg border border-gray-100 dark:border-white/5 hover:-translate-y-1 hover:shadow-md transition-all cursor-default">
                           <MapPin size={14} className="text-[#0059B2] dark:text-[#1A6FD1]"/> {provider.location}
                         </span>
+                        {(provider as any).enLocal && (
+                          <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 px-2.5 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800/50 hover:-translate-y-1 hover:shadow-md transition-all cursor-default">
+                            🏢 En Local
+                          </span>
+                        )}
+                        {(provider as any).aDomicile && (
+                          <span className="flex items-center gap-1.5 text-xs font-semibold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 px-2.5 py-1.5 rounded-lg border border-purple-200 dark:border-purple-800/50 hover:-translate-y-1 hover:shadow-md transition-all cursor-default">
+                            🚗 À Domicile
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -391,7 +416,7 @@ export default function ProviderProfile() {
                           <p className="font-bold text-gray-900 dark:text-white text-sm group-hover:text-[#1A6FD1] dark:group-hover:text-blue-400 transition-colors">{s.nom || s.name}</p>
                           <div className="flex items-center gap-3 mt-1.5">
                             <span className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 font-medium"><Clock size={12} className="text-gray-400 group-hover:text-[#1A6FD1] transition-colors"/> {s.duree} min</span>
-                            <span className="text-[11px] text-blue-500 dark:text-blue-400 flex items-center gap-1 font-bold"><Video size={11}/> En ligne</span>
+                            <span className="text-[11px] text-blue-500 dark:text-blue-400 flex items-center gap-1 font-bold"><Video size={11}/> Sur place</span>
                           </div>
                         </div>
                         <div className="text-right shrink-0 flex flex-col items-end gap-2">
@@ -424,7 +449,7 @@ export default function ProviderProfile() {
               <div className="glass-card rounded-3xl p-6 sm:p-8 fade-up" style={{animationDelay:'.13s'}}>
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <Calendar className="text-[#1A6FD1]" size={18}/> Disponibilités en ligne
+                    <Calendar className="text-[#1A6FD1]" size={18}/> Disponibilités Sur place
                   </h2>
                 </div>
 
@@ -482,6 +507,41 @@ export default function ProviderProfile() {
                 </p>
               </div>
 
+              {/* REVIEWS SECTION */}
+              <div className="glass-card rounded-3xl p-6 sm:p-8 fade-up" style={{animationDelay:'.16s'}}>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <Star className="text-[#1A6FD1]" size={18}/> Avis Clients
+                  </h2>
+                  <div className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-white/5">
+                    <StarsRow rating={provider.rating} size={15}/>
+                    <span className="font-extrabold text-sm text-gray-900 dark:text-white">{provider.rating.toFixed(1)}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">({provider.reviews})</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {provider.reviewsList.length > 0 ? provider.reviewsList.map((review: any, i: number) => (
+                    <div key={i} className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 hover:shadow-md transition-all">
+                      <div className="flex items-start gap-4">
+                        <img src={review.avatar} alt={review.name} className="w-10 h-10 rounded-full object-cover" />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="font-bold text-sm text-gray-900 dark:text-white">{review.name}</h4>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{review.date}</span>
+                          </div>
+                          <div className="mb-2">
+                            <StarsRow rating={review.rating} size={12}/>
+                          </div>
+                          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{review.text}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-gray-500 italic text-center py-4">Aucun avis pour le moment.</p>
+                  )}
+                </div>
+              </div>
 
 
             </div>

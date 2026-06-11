@@ -46,7 +46,6 @@ const TopBar: React.FC<TopBarProps> = ({
     '/Dashboard-Client': 'Mon Espace',
     '/Mes-Rendez-Vous': 'Mes Rendez-vous',
     '/Profils': 'Mon Profil',
-    '/Portefeuille': 'Mon Portefeuille',
     '/Favoris': 'Mes Favoris',
     '/Avis': 'Mes Avis',
     '/Messages': 'Mes Messages',

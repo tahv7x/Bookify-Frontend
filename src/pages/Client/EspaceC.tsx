@@ -256,8 +256,14 @@ const Dashboard: React.FC = () => {
                         </p>
                       </div>
                       <div className="flex gap-3">
-                        <button className="px-5 py-2.5 bg-white text-[#1A6FD1] font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-sm hover:shadow-md hover:shadow-blue-900/20" onClick={() => navigate('/Mes-Rendez-Vous')}>
-                          Gérer
+                        <button
+                          onClick={() => navigate('/Mes-Rendez-Vous')}
+                          className="relative overflow-hidden px-5 py-2.5 bg-white text-[#1A6FD1] font-bold rounded-xl transition-all shadow-sm hover:scale-[1.03] hover:shadow-[0_6px_20px_rgba(26,111,209,0.4)] active:scale-[0.97] group"
+                        >
+                          <span className="relative z-10 group-hover:text-white transition-colors duration-300">
+                            Gérer
+                          </span>
+                          <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#1A6FD1] to-[#0c5a7c] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         </button>
                         <button className="px-5 py-2.5 bg-white/20 text-white font-bold rounded-xl hover:bg-white/30 backdrop-blur-sm transition-colors border border-white/10" onClick={() => navigate('/Messages')}>
                           Message
