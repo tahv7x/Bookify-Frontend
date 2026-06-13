@@ -62,7 +62,7 @@ const Login: React.FC = () => {
   }, []);
 
   const redirectBasedOnRole = (role: string) => {
-    if (role === "ADMIN") navigate("/Admin/Accueil");
+    if (role === "ADMIN") navigate("/Admin");
     else if (role === "PRESTATAIRE") navigate("/Home-Provider");
     else if (role === "CLIENT") navigate("/Home-Client");
   };

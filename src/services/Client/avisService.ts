@@ -27,9 +27,9 @@ export const getAvisByPrestataire = async (prestataireId: number) => {
     }
 };
 
-export const createAvis = async (clientId: number, data: CreateAvisDto) => {
+export const createAvis = async (data: CreateAvisDto) => {
     try {
-        const response = await api.post(`/Avis/${clientId}`, data);
+        const response = await api.post(`/Avis`, data);
         return response.data;
     } catch (error) {
         console.error("Erreur lors de la création de l'avis:", error);

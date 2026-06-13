@@ -9,6 +9,7 @@ import logoLight from "../../assets/LogoB.png";
 import logoDark from "../../assets/LogoW.png";
 
 import { useUnreadMessages } from "../../hooks/useUnreadMessages";
+import api from "../../services/api";
 
 export interface TopBarProps {
   userName?: string;
@@ -33,7 +34,7 @@ const TopBar: React.FC<TopBarProps> = ({
     } catch { return ''; }
   })();
   
-  const actualUserName = userName || defaultUserName;
+  const actualUserName = defaultUserName;
   const firstName = actualUserName ? actualUserName.split(' ')[0] : "Client";
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -43,6 +44,7 @@ const TopBar: React.FC<TopBarProps> = ({
   // Dynamic Page Title Mapping
   const pageTitles: Record<string, string> = {
     '/Home-Client': `Bonjour ${firstName}`,
+    '/Explore': 'Recherche',
     '/Dashboard-Client': 'Mon Espace',
     '/Mes-Rendez-Vous': 'Mes Rendez-vous',
     '/Profils': 'Mon Profil',
@@ -106,17 +108,52 @@ const TopBar: React.FC<TopBarProps> = ({
 
   const avatarRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const searchData = [
-    { id: 1, type: "service", label: "Dentiste" },
-    { id: 2, type: "service", label: "Plombier" },
-    { id: 3, type: "provider", label: "Dr. Youssef Alami" },
-    { id: 4, type: "provider", label: "Coiffeur Casablanca" }
-  ];
+  const [searchData, setSearchData] = useState<{ id: string | number; type: "service" | "provider"; label: string }[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const filteredResults = searchData.filter(item =>
-    item.label.toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => {
+    const term = search.trim();
+    if (term.length < 2) {
+      setSearchData([]);
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const [servicesRes, providersRes] = await Promise.all([
+          api.get('/services/explore', { params: { q: term, limit: 4 } }).catch(() => ({ data: [] })),
+          api.get('/prestataires/all', { params: { q: term, limit: 4 } }).catch(() => ({ data: [] }))
+        ]);
+
+        const services = (servicesRes.data || []).slice(0, 4).map((s: any) => ({
+          id: `s_${s.idService || s.id}`,
+          type: "service",
+          label: s.nom
+        }));
+
+        const providers = (providersRes.data || []).slice(0, 4).map((p: any) => ({
+          id: `p_${p.id}`,
+          type: "provider",
+          label: p.nom || p.nomComplet || "Prestataire"
+        }));
+
+        setSearchData([...services, ...providers]);
+      } catch (err) {
+        console.error("Search error:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [search]);
+
+  // Use the fetched data directly as our filtered results
+  const filteredResults = searchData;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -135,6 +172,27 @@ const TopBar: React.FC<TopBarProps> = ({
     if (openAvatar) document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [openAvatar]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node))
+        setOpenSearch(false);
+    };
+    if (openSearch) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [openSearch]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        setOpenSearch(true);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const getInitials = (name: string) => {
     if (!name) return "C";
@@ -200,16 +258,32 @@ const TopBar: React.FC<TopBarProps> = ({
       <div className="flex items-center gap-4">
 
         {/* Search Input with Premium Glassmorphism styling */}
-        <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-gray-50/50 dark:bg-[#1a1d27]/40 backdrop-blur-sm rounded-xl border border-white/60 dark:border-[#2d3148] relative transition-colors focus-within:border-[#1A6FD1]/50">
-          <Search size={14} className="text-gray-400 dark:text-gray-500" />
+        <div ref={searchRef} className="hidden sm:flex items-center gap-2 px-3 py-2 bg-gray-50/50 dark:bg-[#1a1d27]/40 backdrop-blur-sm rounded-xl border border-white/60 dark:border-[#2d3148] relative transition-colors focus-within:border-[#1A6FD1]/50">
+          <button
+            onClick={() => {
+              if (search.trim() !== '') {
+                const match = searchData.find(item => item.label.toLowerCase() === search.trim().toLowerCase());
+                const modeParam = match ? `&mode=${match.type}` : '';
+                navigate(`/Explore?q=${encodeURIComponent(search)}${modeParam}`);
+                setOpenSearch(false);
+              }
+            }}
+            className="text-gray-400 dark:text-gray-500 hover:text-[#1A6FD1] transition-colors cursor-pointer focus:outline-none bg-transparent border-0 p-0"
+            title="Rechercher"
+          >
+            <Search size={14} />
+          </button>
           <input
+            ref={searchInputRef}
             type="search"
             placeholder="Rechercher des services, prestataires..."
             value={search}
             onChange={e => { setSearch(e.target.value); setOpenSearch(true); }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && search.trim() !== '') {
-                navigate(`/Explore?q=${encodeURIComponent(search)}`);
+                const match = searchData.find(item => item.label.toLowerCase() === search.trim().toLowerCase());
+                const modeParam = match ? `&mode=${match.type}` : '';
+                navigate(`/Explore?q=${encodeURIComponent(search)}${modeParam}`);
                 setOpenSearch(false);
               }
             }}
@@ -230,19 +304,30 @@ const TopBar: React.FC<TopBarProps> = ({
                 transition={{ duration: 0.15 }}
                 className="absolute top-11 right-0 w-full glass-dropdown rounded-2xl shadow-xl z-50 overflow-hidden"
               >
-                {filteredResults.length === 0 ? (
+                {isSearching ? (
+                  <div className="p-4 text-xs text-gray-500 dark:text-gray-400 text-center font-medium flex items-center justify-center gap-2">
+                    <span className="w-3 h-3 border-2 border-[#1A6FD1] border-t-transparent rounded-full animate-spin"></span>
+                    Recherche...
+                  </div>
+                ) : filteredResults.length === 0 && search.trim().length >= 2 ? (
                   <div className="p-4 text-xs text-gray-500 dark:text-gray-400 text-center font-medium">Aucun résultat</div>
-                ) : (
+                ) : filteredResults.length > 0 ? (
                   filteredResults.map(item => (
                     <div
                       key={item.id}
                       className="px-4 py-3 text-xs font-semibold cursor-pointer hover:bg-white/40 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300 flex justify-between items-center transition-colors border-b border-gray-100/30 dark:border-white/5 last:border-0"
-                      onClick={() => { setOpenSearch(false); setSearch(""); }}
+                      onClick={() => {
+                        setOpenSearch(false);
+                        setSearch(item.label);
+                        navigate(`/Explore?q=${encodeURIComponent(item.label)}&mode=${item.type}`);
+                      }}
                     >
                       <span>{item.label}</span>
                       <span className="text-[9px] uppercase tracking-wider text-gray-400 dark:text-gray-500 px-2 py-0.5 rounded bg-gray-100/50 dark:bg-white/5 border border-gray-200/20 dark:border-white/5">{item.type}</span>
                     </div>
                   ))
+                ) : (
+                  <div className="p-4 text-xs text-gray-500 dark:text-gray-400 text-center font-medium">Tapez au moins 2 caractères</div>
                 )}
               </motion.div>
             )}

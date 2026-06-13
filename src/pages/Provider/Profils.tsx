@@ -8,6 +8,7 @@ import AideModel from '../../components/AideModel';
 import { uploadAvatar, deleteAvatar } from '../../services/provider/avatarService';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
+import LocationPicker from '../../components/Provider/LocationPicker';
 
 type ProfilePage = 'profile' | 'settings';
 interface UserData { 
@@ -19,6 +20,10 @@ interface UserData {
   bio: string; 
   specialite: string; 
   categorie: string; 
+  lat: number | null;
+  lng: number | null;
+  enLocal: boolean;
+  aDomicile: boolean;
 }
 
 const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -69,7 +74,7 @@ const Profils: React.FC = () => {
   const [notifState, setNotifState] = useState<boolean[]>(() => { const s = localStorage.getItem('notifState'); return s ? JSON.parse(s) : [true,true,false,true,false]; });
   const [privacyState, setPrivacyState] = useState<boolean[]>(() => { const s = localStorage.getItem('privacyState'); return s ? JSON.parse(s) : [true,true,false]; });
   
-  const [userData, setUserData] = useState<UserData>({ firstName:'', lastName:'', email:'', phone:'', city:'', bio:'', specialite:'', categorie:'' });
+  const [userData, setUserData] = useState<UserData>({ firstName:'', lastName:'', email:'', phone:'', city:'', bio:'', specialite:'', categorie:'', lat: null, lng: null, enLocal: true, aDomicile: false });
   const [formData, setFormData] = useState<UserData>({ ...userData });
   const [statsSummary, setStatsSummary] = useState({ totalRdv: 0, myClients: 0, rating: 5.0 });
 
@@ -86,7 +91,11 @@ const Profils: React.FC = () => {
         city: u.adresse || '', 
         bio: u.bio || '',
         specialite: u.specialite || '',
-        categorie: u.categorie || ''
+        categorie: u.categorie || '',
+        lat: u.latitude || null,
+        lng: u.longitude || null,
+        enLocal: u.enLocal ?? true,
+        aDomicile: u.aDomicile ?? false
       };
       setUserId(u.idUtilisateur ?? u.id ?? null); 
       setUserName(u.nom || ''); 
@@ -167,7 +176,11 @@ const Profils: React.FC = () => {
         adresse: formData.city,
         specialite: formData.specialite,
         bio: formData.bio,
-        categorie: formData.categorie
+        categorie: formData.categorie,
+        latitude: formData.lat,
+        longitude: formData.lng,
+        enLocal: formData.enLocal,
+        aDomicile: formData.aDomicile
       };
       const res = await updateMyProviderProfile(payload);
       localStorage.setItem('user', JSON.stringify(res.user));
@@ -207,6 +220,18 @@ const Profils: React.FC = () => {
 
   const handleNotifToggle = (i: number) => setNotifState(p => { const n = p.map((v, j) => j === i ? !v : v); localStorage.setItem('notifState', JSON.stringify(n)); return n; });
   const handlePrivacyToggle = (i: number) => setPrivacyState(p => { const n = p.map((v, j) => j === i ? !v : v); localStorage.setItem('privacyState', JSON.stringify(n)); return n; });
+
+  const handleDeleteAccount = async () => {
+    if (window.confirm("Êtes-vous SÛR de vouloir supprimer définitivement votre compte ? Toutes vos données seront perdues à jamais (Rendez-vous, Messages, Services).")) {
+      try {
+        await api.delete('/auth/delete-account');
+        localStorage.clear();
+        window.location.href = '/login';
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Une erreur s'est produite lors de la suppression.");
+      }
+    }
+  };
 
   const settingsTabs = [
     { id: 'info', label: 'Informations', icon: User }, 
@@ -457,6 +482,44 @@ const Profils: React.FC = () => {
                           <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Bio / Description</label>
                           <textarea className={`w-full px-4 py-3 rounded-xl border text-sm font-medium transition-all outline-none resize-none ${isEditing ? 'bg-white dark:bg-[#1A1D24] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:border-[#0059B2] focus:ring-2 focus:ring-blue-500/20' : 'bg-gray-50 dark:bg-white/5 border-transparent text-gray-500 cursor-not-allowed'}`} rows={4} value={formData.bio} disabled={!isEditing} onChange={e=>setFormData(p=>({...p,bio:e.target.value}))} placeholder="Décrivez votre expertise en quelques phrases..."/>
                         </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Où proposez-vous vos services ?</label>
+                          <div className="flex items-center gap-6">
+                            <label className={`flex items-center gap-2 ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'} group`}>
+                              <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${formData.enLocal ? 'bg-[#1A6FD1] border-[#1A6FD1]' : 'border-gray-300 dark:border-white/20 group-hover:border-[#1A6FD1]'}`}>
+                                {formData.enLocal && <Check className="w-3 h-3 text-white" />}
+                              </div>
+                              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">En Local</span>
+                              <input type="checkbox" className="hidden" disabled={!isEditing} checked={formData.enLocal} onChange={(e) => setFormData(p => ({...p, enLocal: e.target.checked}))} />
+                            </label>
+                            <label className={`flex items-center gap-2 ${isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'} group`}>
+                              <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${formData.aDomicile ? 'bg-purple-500 border-purple-500' : 'border-gray-300 dark:border-white/20 group-hover:border-purple-500'}`}>
+                                {formData.aDomicile && <Check className="w-3 h-3 text-white" />}
+                              </div>
+                              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">À Domicile</span>
+                              <input type="checkbox" className="hidden" disabled={!isEditing} checked={formData.aDomicile} onChange={(e) => setFormData(p => ({...p, aDomicile: e.target.checked}))} />
+                            </label>
+                          </div>
+                          {!formData.enLocal && !formData.aDomicile && isEditing && (
+                            <p className="text-xs text-red-500 mt-2 font-medium">Vous devez sélectionner au moins une option de déplacement.</p>
+                          )}
+                        </div>
+
+                        {formData.enLocal && (
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide flex justify-between">
+                              <span>Localisation exacte sur la carte</span>
+                              {isEditing && <span className="text-[#0059B2] font-normal normal-case">Déplacez l'épingle</span>}
+                            </label>
+                            <div className={`transition-all duration-300 ${!isEditing ? 'opacity-70 pointer-events-none grayscale-[30%]' : ''}`}>
+                              <LocationPicker 
+                                position={formData.lat && formData.lng ? { lat: formData.lat, lng: formData.lng } : null} 
+                                onChange={(pos) => isEditing && setFormData(p => ({...p, lat: pos.lat, lng: pos.lng}))} 
+                                height="250px" 
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -541,7 +604,10 @@ const Profils: React.FC = () => {
                       <div className="pt-8 border-t border-red-100 dark:border-red-900/30">
                         <h3 className="text-sm font-bold text-red-600 dark:text-red-400 mb-2">Zone de danger</h3>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">La suppression de votre compte est définitive et toutes vos données (rendez-vous, clients, paramètres) seront perdues à jamais.</p>
-                        <button className="bg-white dark:bg-[#1A1D24] text-red-500 border-2 border-red-100 hover:border-red-500 dark:border-red-500/20 dark:hover:border-red-500 font-semibold py-2.5 px-6 rounded-xl transition-all flex items-center gap-2 active:scale-95">
+                        <button 
+                          onClick={handleDeleteAccount}
+                          className="bg-white dark:bg-[#1A1D24] text-red-500 border-2 border-red-100 hover:border-red-500 dark:border-red-500/20 dark:hover:border-red-500 font-semibold py-2.5 px-6 rounded-xl transition-all flex items-center gap-2 active:scale-95"
+                        >
                           <LogOut size={16}/> Supprimer mon compte
                         </button>
                       </div>

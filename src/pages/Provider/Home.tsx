@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, PlusCircle, MessageSquare, Bell, CheckCircle2, Clock, Trash2, ArrowRight, TrendingUp, Star, Users } from 'lucide-react';
+import { Calendar, PlusCircle, MessageSquare, Bell, CheckCircle2, Clock, Trash2, ArrowRight, TrendingUp, Star, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { useTheme } from '../../context/ThemeContext';
 import { motion } from 'framer-motion';
+import { getMyProviderProfile } from '../../services/provider/providerService';
+import { getStats } from '../../services/provider/getStats';
+import { getUpcoming } from '../../services/provider/upComing';
+import { getLatest } from '../../services/provider/latest';
 
 interface NotificationItem {
   id: number;
@@ -13,6 +17,27 @@ interface NotificationItem {
   isRead: boolean;
   createdAt: string;
   rendezVousId?: number;
+}
+
+interface StatsData {
+  revenus: number;
+  rdvThisMonth: number;
+  noteMoyenne: number;
+  areaData: Array<{ month: string; v1: number; v2: number }>;
+  barData: Array<{ day: string; v: number }>;
+  donutData: Array<{ name: string; value: number; color: string }>;
+}
+
+interface UpcomingRdv {
+  client: string;
+  time: string;
+  statut: string;
+}
+
+interface LatestRdv {
+  client: string;
+  time: string;
+  statut: string;
 }
 
 interface CardProps { children: React.ReactNode; className?: string; style?: React.CSSProperties; delay?: number; }
@@ -55,48 +80,109 @@ const KpiCard: React.FC<KpiCardProps> = ({ icon, label, value, dark, delay = 0 }
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const [userName, setUserName] = useState('');
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [firstName, setFirstName] = useState('');
+  const [prestataireId, setPrestataireId] = useState<number | null>(null);
+  const [stats, setStats] = useState<StatsData | null>(null);
+  const [upcoming, setUpcoming] = useState<UpcomingRdv[]>([]);
+  const [latest, setLatest] = useState<LatestRdv | null>(null);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notifLoading, setNotifLoading] = useState(true);
 
   useEffect(() => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
       const u = JSON.parse(userStr);
       setUserName(u.nomComplet || u.nom || 'Prestataire');
-      setFirstName(u.nom.split(' ')[0]|| u.nomComplet.split(' ')[0]);
+      setFirstName(u.nom.split(' ')[0] || u.nomComplet.split(' ')[0]);
     }
+    fetchProviderData();
     fetchNotifications();
   }, []);
 
-  const fetchNotifications = async () => {
+  const fetchProviderData = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/Notifications');
-      setNotifications(res.data);
+      const profile = await getMyProviderProfile();
+      if (profile?.id) {
+        setPrestataireId(profile.id);
+        await fetchStats(profile.id);
+        await fetchUpcoming(profile.id);
+        await fetchLatest(profile.id);
+      }
     } catch (err) {
-      console.error("Erreur lors de la récupération des notifications:", err);
+      console.error("Erreur lors de la récupération du profil prestataire:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const markAsRead = async (id: number) => {
+  const fetchNotifications = async () => {
     try {
-      await api.put(`/Notifications/${id}/read`);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+      setNotifLoading(true);
+      const res = await api.get('/Notifications');
+      setNotifications(res.data);
+    } catch (err) {
+      console.error("Erreur lors de la récupération des notifications:", err);
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  const fetchStats = async (id: number) => {
+    try {
+      const data = await getStats(id);
+      setStats(data);
+    } catch (err) {
+      console.error("Erreur lors de la récupération des stats:", err);
+    }
+  };
+
+  const fetchUpcoming = async (id: number) => {
+    try {
+      const data = await getUpcoming(id);
+      setUpcoming(data);
+    } catch (err) {
+      console.error("Erreur lors de la récupération des RDV à venir:", err);
+    }
+  };
+
+  const fetchLatest = async (id: number) => {
+    try {
+      const data = await getLatest(id);
+      setLatest(data);
+    } catch (err) {
+      console.error("Erreur lors de la récupération du dernier RDV:", err);
+    }
+  };
+
+  const markNotifAsRead = async (notif: NotificationItem) => {
+    try {
+      await api.put(`/Notifications/${notif.id}/read`);
+      setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, isRead: true } : n));
     } catch (err) {
       toast.error("Erreur lors de la mise à jour");
     }
   };
 
-  const deleteNotification = async (id: number) => {
+  const deleteNotif = async (notif: NotificationItem) => {
     try {
-      await api.delete(`/Notifications/${id}`);
-      setNotifications(prev => prev.filter(n => n.id !== id));
+      await api.delete(`/Notifications/${notif.id}`);
+      setNotifications(prev => prev.filter(n => n.id !== notif.id));
       toast.success("Notification supprimée");
     } catch (err) {
       toast.error("Erreur lors de la suppression");
+    }
+  };
+
+  const markAllAsRead = async () => {
+    const unread = notifications.filter(n => !n.isRead);
+    try {
+      await Promise.all(unread.map(n => api.put(`/Notifications/${n.id}/read`)));
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      toast.success("Toutes les notifications marquées comme lues");
+    } catch (err) {
+      toast.error("Erreur lors de la mise à jour");
     }
   };
 
@@ -141,54 +227,70 @@ const Home: React.FC = () => {
 
         {/* Stats Summary (matching Dashboard KpiCards) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
-          <KpiCard delay={0.2} icon={<Calendar size={24} className="text-[#0059B2] dark:text-blue-400" />} label="Rendez-vous" value="8" />
-          <KpiCard delay={0.3} icon={<Users size={24} className="text-emerald-600 dark:text-emerald-400" />} label="Nouveaux clients" value="12" />
-          <KpiCard delay={0.4} icon={<Star size={24} className="text-yellow-600 dark:text-yellow-400" />} label="Note moyenne" value="4.8" />
+          <KpiCard delay={0.2} icon={<Calendar size={24} className="text-[#0059B2] dark:text-blue-400" />} label="RDV ce mois" value={String(stats?.rdvThisMonth ?? 0)} />
+          <KpiCard delay={0.3} icon={<DollarSign size={24} className="text-emerald-600 dark:text-emerald-400" />} label="Revenus (ACCEPTE)" value={`${(stats?.revenus ?? 0).toLocaleString()} DH`} />
+          <KpiCard delay={0.4} icon={<Star size={24} className="text-yellow-600 dark:text-yellow-400" />} label="Note moyenne" value={stats?.noteMoyenne ? String(stats.noteMoyenne) : '0'} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
         
-        {/* Notifications Feed */}
+        {/* Notifications Section */}
         <div className="lg:col-span-2 flex flex-col gap-8">
           <Card className="flex-1 p-0 overflow-hidden" delay={0.5}>
-            <div className="flex justify-between items-center p-8 pb-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-8 pb-4 gap-4">
               <h3 className="text-2xl text-[#0f2a5e] dark:text-white flex items-center gap-3" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>
-                Fil d'actualité
+                <Bell size={22} className="text-[#0059B2] dark:text-blue-400" />
+                Notifications
                 {unreadCount > 0 && (
                   <span className="bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 text-sm font-bold px-3 py-1 rounded-full">
-                    {unreadCount} nouveau{unreadCount > 1 ? 'x' : ''}
+                    {unreadCount} non lu{unreadCount > 1 ? 'es' : 'e'}
                   </span>
                 )}
               </h3>
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  className="text-xs font-bold text-[#0059B2] dark:text-blue-400 hover:underline flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50/80 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all"
+                >
+                  <CheckCircle2 size={14} /> Tout marquer comme lu
+                </button>
+              )}
             </div>
 
-            {loading ? (
-              <div className="p-10 text-center text-gray-500 font-medium">Chargement des actualités...</div>
+            {notifLoading ? (
+              <div className="p-10 text-center text-gray-500 font-medium">Chargement des notifications...</div>
             ) : notifications.length === 0 ? (
               <div className="p-16 flex flex-col items-center justify-center text-center">
                 <div className="w-16 h-16 bg-gray-50 dark:bg-white/5 rounded-full flex items-center justify-center mb-4">
                   <Bell size={24} className="text-gray-400" />
                 </div>
-                <p className="text-gray-500 font-medium">Vous êtes à jour ! Rien de nouveau pour le moment.</p>
+                <p className="text-gray-500 font-medium">Aucune notification pour le moment.</p>
+                <p className="text-gray-400 text-sm mt-1">Vous serez notifié lors de nouvelles réservations ou messages.</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100 dark:divide-white/5 max-h-[500px] overflow-y-auto custom-scrollbar">
                 {notifications.map((notif, index) => (
                   <motion.div 
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.6 + (index * 0.1) }}
+                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.6 + (index * 0.05) }}
                     key={notif.id}
-                    className={`p-6 relative group rounded-2xl mx-2 my-1 transform transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${notif.isRead ? 'bg-transparent hover:bg-white/60 dark:hover:bg-[#1A1D24]/80' : 'bg-blue-50/50 dark:bg-blue-500/10 hover:bg-blue-50 dark:hover:bg-blue-500/20 hover:shadow-blue-500/10'}`}
+                    className={`p-6 relative group rounded-2xl mx-2 my-1 transform transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${
+                      notif.isRead
+                        ? 'bg-transparent hover:bg-white/60 dark:hover:bg-[#1A1D24]/80'
+                        : 'bg-blue-50/50 dark:bg-blue-500/10 hover:bg-blue-50 dark:hover:bg-blue-500/20 hover:shadow-blue-500/10'
+                    }`}
                   >
                     <div className="flex gap-4">
-                      <div className="mt-1">
+                      <div className="mt-2 flex-shrink-0">
                         {!notif.isRead ? (
-                          <div className="w-3 h-3 rounded-full bg-[#0059B2] dark:bg-blue-400 mt-1 shadow-[0_0_8px_rgba(0,89,178,0.5)]" />
+                          <div className="w-3 h-3 rounded-full bg-[#0059B2] dark:bg-blue-400 shadow-[0_0_8px_rgba(0,89,178,0.5)]" />
                         ) : (
-                          <div className="w-3 h-3 rounded-full bg-gray-200 dark:bg-gray-700 mt-1" />
+                          <div className="w-3 h-3 rounded-full bg-gray-200 dark:bg-gray-700" />
                         )}
                       </div>
-                      <div className="flex-1">
-                        <h4 className={`text-base ${!notif.isRead ? 'font-bold text-[#0f2a5e] dark:text-white' : 'font-semibold text-gray-700 dark:text-gray-300'}`}>
+                      <div className="flex-1 min-w-0">
+                        <h4 className={`text-base truncate ${
+                          !notif.isRead ? 'font-bold text-[#0f2a5e] dark:text-white' : 'font-semibold text-gray-700 dark:text-gray-300'
+                        }`}>
                           {notif.title}
                         </h4>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
@@ -198,19 +300,18 @@ const Home: React.FC = () => {
                           <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                             <Clock size={14} /> {getTimeAgo(notif.createdAt)}
                           </span>
-                          
                           {!notif.isRead && (
                             <button 
-                              onClick={() => markAsRead(notif.id)}
+                              onClick={() => markNotifAsRead(notif)}
                               className="text-xs font-bold text-[#0059B2] dark:text-blue-400 hover:underline flex items-center gap-1.5"
                             >
-                              <CheckCircle2 size={14} /> Marquer comme lu
+                              <CheckCircle2 size={14} /> Marquer comme lue
                             </button>
                           )}
                         </div>
                       </div>
                       <button 
-                        onClick={() => deleteNotification(notif.id)}
+                        onClick={() => deleteNotif(notif)}
                         className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 absolute right-4 top-4"
                       >
                         <Trash2 size={18} />
@@ -260,6 +361,50 @@ const Home: React.FC = () => {
               </motion.button>
             </div>
           </Card>
+
+          {upcoming.length > 0 && (
+            <Card delay={0.8}>
+              <h3 className="text-2xl text-[#0f2a5e] dark:text-white mb-6 flex items-center gap-2" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>
+                <Calendar size={24} className="text-[#0059B2]" />
+                Prochains rendez-vous
+              </h3>
+              <div className="space-y-3">
+                {upcoming.map((rdv, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: 0.9 + index * 0.1 }}
+                    className="flex items-center justify-between p-4 rounded-2xl bg-white/40 dark:bg-[#1A1D24]/40 border border-white dark:border-white/10 hover:bg-white/60 dark:hover:bg-[#1A1D24]/60 transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                        <Calendar size={18} className="text-[#0059B2] dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-[#0f2a5e] dark:text-white text-sm">{rdv.client}</h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{rdv.time}</p>
+                      </div>
+                    </div>
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                      rdv.statut === 'CONFIRME' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                      rdv.statut === 'TERMINE' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                      rdv.statut === 'ANNULE' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                      'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                    }`}>
+                      {rdv.statut}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
+              <button
+                onClick={() => navigate('/Mes-Rendez-Vous-Provider')}
+                className="w-full mt-4 text-center text-sm font-semibold text-[#0059B2] dark:text-blue-400 hover:underline"
+              >
+                Voir tous les rendez-vous
+              </button>
+            </Card>
+          )}
 
           <motion.div 
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.9 }}

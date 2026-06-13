@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Mail, Phone, MapPin, Calendar, Star, Users, MessageSquare } from 'lucide-react';
+import { Search, Mail, Phone, MapPin, Calendar, Star, Users, MessageSquare, Loader2 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import api from '../../services/api';
+import toast from 'react-hot-toast';
 
 interface Client {
   id: number;
@@ -16,66 +18,51 @@ interface Client {
   rating: number;
 }
 
-const DUMMY_CLIENTS: Client[] = [
-  {
-    id: 1,
-    name: "Yassine El Fassi",
-    avatar: "https://i.pravatar.cc/150?u=yassine",
-    initials: "YE",
-    email: "yassine.fassi@example.com",
-    phone: "+212 6 00 11 22 33",
-    city: "Casablanca",
-    rdvCount: 4,
-    lastRdv: "12 Mai 2026",
-    rating: 5.0
-  },
-  {
-    id: 2,
-    name: "Amina Bennani",
-    avatar: "https://i.pravatar.cc/150?u=amina",
-    initials: "AB",
-    email: "amina.b@example.com",
-    phone: "+212 6 11 22 33 44",
-    city: "Rabat",
-    rdvCount: 2,
-    lastRdv: "03 Juin 2026",
-    rating: 4.5
-  },
-  {
-    id: 3,
-    name: "Karim Tazi",
-    avatar: null,
-    initials: "KT",
-    email: "karim.tazi@example.com",
-    phone: "+212 6 22 33 44 55",
-    city: "Marrakech",
-    rdvCount: 1,
-    lastRdv: "28 Avr 2026",
-    rating: 0
-  },
-  {
-    id: 4,
-    name: "Sara Chraibi",
-    avatar: "https://i.pravatar.cc/150?u=sara",
-    initials: "SC",
-    email: "sara.chraibi@example.com",
-    phone: "+212 6 33 44 55 66",
-    city: "Tanger",
-    rdvCount: 7,
-    lastRdv: "10 Juin 2026",
-    rating: 4.8
-  }
-];
-
 const MesClients: React.FC = () => {
   const { isDark } = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredClients = DUMMY_CLIENTS.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.city.toLowerCase().includes(searchTerm.toLowerCase())
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const res = await api.get('/Prestataires/mine/clients');
+        
+        // Format dates correctly from the backend
+        const formattedClients = res.data.map((c: any) => {
+          const d = new Date(c.lastRdv);
+          return {
+            ...c,
+            lastRdv: isNaN(d.getTime()) ? "Inconnue" : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+          };
+        });
+        
+        setClients(formattedClients);
+      } catch (err: any) {
+        console.error("Error fetching clients:", err);
+        toast.error("Erreur lors du chargement des clients.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchClients();
+  }, []);
+
+  const filteredClients = clients.filter(c => 
+    c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.city?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-12 h-12 text-[#0059B2] animate-spin mb-4" />
+        <p className="text-gray-500 font-medium">Chargement de vos clients...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen">
@@ -125,7 +112,7 @@ const MesClients: React.FC = () => {
             <div>
               <p className={`text-xs mb-1 font-medium tracking-wide uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Total Clients</p>
               <p className={`text-3xl font-extrabold leading-none ${isDark ? 'text-white' : 'text-[#0f2a5e]'}`} style={{ fontFamily: "'Fraunces', serif" }}>
-                {DUMMY_CLIENTS.length}
+                {clients.length}
               </p>
             </div>
           </motion.div>
@@ -140,7 +127,7 @@ const MesClients: React.FC = () => {
             <div>
               <p className={`text-xs mb-1 font-medium tracking-wide uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Avis Moyens</p>
               <p className={`text-3xl font-extrabold leading-none ${isDark ? 'text-white' : 'text-[#0f2a5e]'}`} style={{ fontFamily: "'Fraunces', serif" }}>
-                4.8
+                {clients.length > 0 ? (clients.reduce((acc, c) => acc + (c.rating || 5.0), 0) / clients.length).toFixed(1) : "N/A"}
               </p>
             </div>
           </motion.div>
@@ -177,7 +164,7 @@ const MesClients: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-1">
                     <MapPin size={14} className="text-[#0059B2] dark:text-blue-400" />
-                    <span className="truncate">{client.city}</span>
+                    <span className="truncate">{client.city || 'Non renseigné'}</span>
                   </div>
                 </div>
               </div>
@@ -187,13 +174,13 @@ const MesClients: React.FC = () => {
                   <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400">
                     <Phone size={14} />
                   </div>
-                  <span className="text-gray-700 dark:text-gray-300 font-medium">{client.phone}</span>
+                  <span className="text-gray-700 dark:text-gray-300 font-medium">{client.phone || 'Non renseigné'}</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400">
                     <Mail size={14} />
                   </div>
-                  <span className="text-gray-700 dark:text-gray-300 font-medium truncate">{client.email}</span>
+                  <span className="text-gray-700 dark:text-gray-300 font-medium truncate">{client.email || 'Non renseigné'}</span>
                 </div>
               </div>
 

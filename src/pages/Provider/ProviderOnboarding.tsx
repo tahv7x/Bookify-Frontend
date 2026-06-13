@@ -61,8 +61,8 @@ const ProviderOnboarding: React.FC = () => {
   const [serviceData, setServiceData] = useState({
     nom: "",
     prix: 0,
-    duree: 30,
-    uniteDuree: "Minutes",
+    duree: 1,
+    uniteDuree: "Heures",
     description: ""
   });
 

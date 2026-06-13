@@ -72,96 +72,139 @@ const Explore: React.FC = () => {
 
   // Navigation State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [userName, setUserName] = useState("Client");
-
-  useEffect(() => { 
-    const s = localStorage.getItem('user'); 
-    if (s) { 
-      try { 
-        const u = JSON.parse(s); 
-        setUserName(u.nomComplet); 
-      } catch (e) {} 
-    } 
-  }, []);
+  const [userName] = useState(() => {
+    const s = localStorage.getItem('user');
+    if (s) {
+      try {
+        const u = JSON.parse(s);
+        return u.nomComplet || 'Client';
+      } catch { /* ignore */ }
+    }
+    return 'Client';
+  });
   // Filtres State
+  const initialMode = (searchParams.get('mode') as 'service' | 'provider') || 'service';
   const initialSearch = searchParams.get('q') || '';
   const initialCategory = searchParams.get('category') || 'Tous';
+  const initialEnLocal = searchParams.get('enLocal') === 'true';
+  const initialADomicile = searchParams.get('aDomicile') === 'true';
   
+  const [searchMode, setSearchMode] = useState<'service' | 'provider'>(initialMode);
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedCity, setSelectedCity] = useState('Toutes');
   const [minRating, setMinRating] = useState(0);
   const [onlyAvailable, setOnlyAvailable] = useState(false);
+  const [filterEnLocal, setFilterEnLocal] = useState(initialEnLocal);
+  const [filterADomicile, setFilterADomicile] = useState(initialADomicile);
   
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [providers, setProviders] = useState<any[]>([]);
 
-  // Fetch Providers Server-Side Search
+  // Synchroniser l'état local quand les paramètres de l'URL changent (ex: depuis la TopBar)
   useEffect(() => {
+    const q = searchParams.get('q') || '';
+    const mode = (searchParams.get('mode') as 'service' | 'provider') || 'service';
+    const cat = searchParams.get('category') || 'Tous';
+    const enLocal = searchParams.get('enLocal') === 'true';
+    const aDomicile = searchParams.get('aDomicile') === 'true';
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Sync URL params to local state
+    setSearchQuery(prev => q !== prev ? q : prev);
+    setSearchMode(prev => mode !== prev ? mode : prev);
+    setSelectedCategory(prev => cat !== prev ? cat : prev);
+    setFilterEnLocal(prev => enLocal !== prev ? enLocal : prev);
+    setFilterADomicile(prev => aDomicile !== prev ? aDomicile : prev);
+  }, [searchParams]);
+
+  // Fetch Results Server-Side Search
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Loading state reset before async fetch
     setIsLoading(true);
+    setProviders([]);
     const params: any = {};
     if (searchQuery) params.q = searchQuery;
     if (selectedCategory && selectedCategory !== 'Tous') params.category = selectedCategory;
     if (selectedCity && selectedCity !== 'Toutes') params.city = selectedCity;
     if (minRating > 0) params.minRating = minRating;
-    api.get('/prestataires/all', { params })
+
+    const endpoint = searchMode === 'service' ? '/services/explore' : '/prestataires/all';
+
+    api.get(endpoint, { params })
       .then(res => {
-        setProviders(res.data.map((p: any) => {
-          let cityMatch = CITIES.find(c => p.location?.toLowerCase().includes(c.toLowerCase()));
+        setProviders(res.data.map((item: any) => {
+          const locationStr = searchMode === 'service' ? item.prestataire?.adresse : item.location;
+          let cityMatch = CITIES.find(c => locationStr?.toLowerCase().includes(c.toLowerCase()));
           if (!cityMatch || cityMatch === 'Toutes') cityMatch = 'Casablanca';
           const baseCoord = CITY_COORDINATES[cityMatch] || DEFAULT_CENTER;
-          const lat = p.latitude ?? (baseCoord[0] + (Math.random() - 0.5) * 0.05);
-          const lng = p.longitude ?? (baseCoord[1] + (Math.random() - 0.5) * 0.05);
-
-          return {
-            id: p.id,
-            name: p.nom,
-            specialty: p.specialite || 'Spécialiste',
-            location: p.location || 'Maroc',
-            rating: p.rating || 0,
-            reviews: Math.floor(Math.random() * 200), 
-            img: p.avatar,
-            available: p.availableToday,
-            price: 'Sur devis',
-            category: normalizeCategory(p.categorie),
-            lat,
-            lng,
-            enLocal: p.enLocal,
-            aDomicile: p.aDomicile
-          };
+          
+          let lat, lng;
+          if (searchMode === 'service') {
+            lat = item.prestataire?.latitude ?? (baseCoord[0] + (Math.random() - 0.5) * 0.05);
+            lng = item.prestataire?.longitude ?? (baseCoord[1] + (Math.random() - 0.5) * 0.05);
+            
+            return {
+              isService: true,
+              id: item.idService,
+              name: item.nom,
+              price: item.prix,
+              duration: item.duree + ' ' + item.uniteDuree,
+              images: item.imageUrls ? item.imageUrls.split(',').filter(Boolean) : [],
+              providerId: item.prestataire.id,
+              providerName: item.prestataire.nom,
+              rating: item.prestataire.note || 4.5,
+              reviews: Math.floor(Math.random() * 200),
+              img: item.prestataire.avatar,
+              location: locationStr || 'Maroc',
+              enLocal: item.prestataire.enLocal,
+              aDomicile: item.prestataire.aDomicile,
+              lat, lng
+            };
+          } else {
+            lat = item.latitude ?? (baseCoord[0] + (Math.random() - 0.5) * 0.05);
+            lng = item.longitude ?? (baseCoord[1] + (Math.random() - 0.5) * 0.05);
+            
+            return {
+              isService: false,
+              id: item.id,
+              name: item.nom,
+              specialty: item.specialite || 'Spécialiste',
+              location: item.location || 'Maroc',
+              rating: item.rating || 4.5,
+              reviews: Math.floor(Math.random() * 200), 
+              img: item.avatar,
+              available: item.availableToday,
+              price: 'Sur devis',
+              category: normalizeCategory(item.categorie),
+              lat, lng,
+              enLocal: item.enLocal,
+              aDomicile: item.aDomicile
+            };
+          }
         }));
       })
       .catch(() => {})
       .finally(() => setIsLoading(false));
-  }, [searchQuery, selectedCategory, selectedCity, minRating]);
+  }, [searchQuery, selectedCategory, selectedCity, minRating, searchMode]);
 
-  // Mettre à jour l'URL quand la catégorie change
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams);
-    if (selectedCategory && selectedCategory !== 'Tous') {
-      params.set('category', selectedCategory);
-    } else {
-      params.delete('category');
-    }
-    
-    if (searchQuery) {
-      params.set('q', searchQuery);
-    } else {
-      params.delete('q');
-    }
-    setSearchParams(params, { replace: true });
-  }, [selectedCategory, searchQuery, setSearchParams]);
+  // L'URL est gérée par le TopBar, on a supprimé la synchronisation inverse pour éviter la boucle infinie.
 
   // (Loading handled by API now)
 
   // Filtrage des résultats - Local filters (others handled by server)
   const filteredResults = providers.filter(p => {
     const matchAvailability = onlyAvailable ? p.available : true;
-    return matchAvailability;
+    
+    // Si aucun filtre de lieu n'est activé, on montre tout
+    const matchLieu = (!filterEnLocal && !filterADomicile) ||
+                      (filterEnLocal && p.enLocal) ||
+                      (filterADomicile && p.aDomicile);
+
+    return matchAvailability && matchLieu;
   });
 
-  const FilterContent = () => (
+  const filterContent = (
     <div className="space-y-8">
       {/* Catégories (Pills) */}
       <div>
@@ -192,6 +235,25 @@ const Explore: React.FC = () => {
             {CITIES.map(city => <option key={city} value={city} className="font-medium text-gray-900 dark:text-white bg-white dark:bg-[#0B0F19]">{city}</option>)}
           </select>
           <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-[#1A6FD1] transition-colors duration-300" size={16} pointerEvents="none" />
+        </div>
+      </div>
+
+      {/* Lieu (Pills) */}
+      <div>
+        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Lieu de la prestation</h3>
+        <div className="flex flex-wrap gap-2">
+          <button 
+            onClick={() => setFilterEnLocal(!filterEnLocal)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${filterEnLocal ? 'bg-gradient-to-br from-blue-500 to-[#1A6FD1] text-white shadow-md shadow-[#1A6FD1]/20' : 'bg-gray-100 dark:bg-[#1a1d27]/60 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[#2d3148]'}`}
+          >
+            🏢 Sur place
+          </button>
+          <button 
+            onClick={() => setFilterADomicile(!filterADomicile)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${filterADomicile ? 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-md shadow-purple-500/20' : 'bg-gray-100 dark:bg-[#1a1d27]/60 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[#2d3148]'}`}
+          >
+            🏠 À domicile
+          </button>
         </div>
       </div>
 
@@ -338,15 +400,15 @@ const Explore: React.FC = () => {
         <TopBar userName={userName} onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)} isMobileMenuOpen={isSidebarOpen} />
 
         {/* HERO SEARCH HEADER */}
-        <div className="bg-white/80 dark:bg-[#0B0F19]/80 backdrop-blur-md border-b border-white/20 dark:border-[#151B2B] pt-10 pb-8 px-4 sm:px-6 lg:px-8">
+        <div className="bg-white/80 dark:bg-[#0B0F19]/80 backdrop-blur-md border-b border-white/20 dark:border-[#151B2B] pt-10 pb-4 px-4 sm:px-6 lg:px-8">
           <div className="max-w-[1600px] mx-auto">
             <h1 className="text-3xl font-bold font-fraunces text-gray-900 dark:text-white mb-6 tracking-tight">Trouvez le prestataire idéal.</h1>
-            <div className="flex gap-3">
+            <div className="flex gap-3 mb-6">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input 
                   type="text" 
-                  placeholder="Que cherchez-vous ? (ex: Dentiste, Plombier...)"
+                  placeholder={searchMode === 'service' ? "Quel service cherchez-vous ? (ex: Installation caméra...)" : "Qui cherchez-vous ? (ex: Dentiste, Plombier...)"}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-white/40 dark:bg-white/5 backdrop-blur-md border border-white/60 dark:border-white/10 shadow-[0_4px_16px_rgba(31,38,135,0.05)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)] text-gray-900 dark:text-white rounded-2xl pl-12 pr-4 py-4 outline-none focus:border-[#1A6FD1] focus:ring-4 focus:ring-[#1A6FD1]/10 transition-all"
@@ -359,6 +421,13 @@ const Explore: React.FC = () => {
                 <SlidersHorizontal size={20} />
               </button>
             </div>
+            
+            <div className="flex items-center gap-4">
+               <div className="flex bg-gray-100 dark:bg-white/5 p-1 rounded-xl">
+                 <button onClick={() => setSearchMode('service')} className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${searchMode === 'service' ? 'bg-white dark:bg-[#1A6FD1] text-[#1A6FD1] dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>Par Service</button>
+                 <button onClick={() => setSearchMode('provider')} className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${searchMode === 'provider' ? 'bg-white dark:bg-[#1A6FD1] text-[#1A6FD1] dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>Par Prestataire</button>
+               </div>
+            </div>
           </div>
         </div>
 
@@ -367,12 +436,12 @@ const Explore: React.FC = () => {
           
           {/* DESKTOP FILTERS SIDEBAR */}
           <aside className="hidden lg:block w-64 flex-shrink-0">
-            <div className="sticky top-32 glass-card p-6 rounded-3xl">
+            <div className="glass-card p-6 rounded-3xl">
               <div className="flex items-center gap-2 mb-8">
                 <Filter size={18} className="text-[#1A6FD1]" />
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white font-fraunces">Filtres</h2>
               </div>
-              <FilterContent />
+              {filterContent}
             </div>
           </aside>
 
@@ -402,11 +471,66 @@ const Explore: React.FC = () => {
               </div>
             ) : filteredResults.length > 0 ? (
               <div className="grid sm:grid-cols-2 gap-6">
-                {filteredResults.map(provider => (
+                {filteredResults.map(provider => provider.isService ? (
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    key={provider.id} 
+                    key={`srv-${provider.id}`} 
+                    className="glass-card rounded-3xl p-5 flex flex-col hover:-translate-y-1 hover:shadow-lg hover:shadow-[#1A6FD1]/5 transition-all duration-300 cursor-pointer group"
+                    onClick={() => navigate(`/service/${provider.id}/book`)}
+                  >
+                    <div className="flex gap-4 mb-3">
+                      {provider.images && provider.images.length > 0 ? (
+                        <img src={provider.images[0]} alt={provider.name} className="w-24 h-24 rounded-2xl object-cover border border-white/10" />
+                      ) : (
+                        <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#004a96] to-[#1A6FD1] flex items-center justify-center text-white font-bold text-3xl opacity-80">
+                          {provider.name?.charAt(0)}
+                        </div>
+                      )}
+                      <div className="flex-1 flex flex-col justify-between py-1">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-[#1A6FD1] transition-colors leading-tight mb-1">{provider.name}</h3>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">Durée: {provider.duration}</div>
+                        </div>
+                        <div className="text-xl font-extrabold text-[#1A6FD1]">{provider.price} MAD</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2 mb-4">
+                      {provider.enLocal && (
+                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] rounded-md font-medium border border-blue-200 dark:border-blue-800/50">
+                          🏢 En Local
+                        </span>
+                      )}
+                      {provider.aDomicile && (
+                        <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-[10px] rounded-md font-medium border border-purple-200 dark:border-purple-800/50">
+                          🚗 À Domicile
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="mt-auto pt-4 border-t border-gray-100 dark:border-[#2d3148] flex justify-between items-center">
+                      <div className="flex items-center gap-2" onClick={(e) => { e.stopPropagation(); navigate(`/Service-Provider-Profile/${provider.providerId}`); }}>
+                        {provider.img ? (
+                          <img src={provider.img} alt={provider.providerName} className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-white/10" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold">{provider.providerName?.charAt(0)}</div>
+                        )}
+                        <div>
+                          <div className="text-xs font-bold text-gray-900 dark:text-white hover:underline">{provider.providerName}</div>
+                          <div className="flex items-center gap-1 text-[10px] text-amber-500 font-bold"><Star size={10} className="fill-current"/> {provider.rating}</div>
+                        </div>
+                      </div>
+                      <button className="bg-gradient-to-r from-[#004a96] to-[#1A6FD1] hover:scale-105 text-white px-4 py-2 rounded-xl text-xs font-bold transition-transform shadow-md">
+                        Réserver
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    key={`prv-${provider.id}`} 
                     className="glass-card rounded-3xl p-6 flex flex-col hover:-translate-y-1 hover:shadow-lg hover:shadow-[#1A6FD1]/5 transition-all duration-300 cursor-pointer group"
                     onClick={() => navigate(`/Service-Provider-Profile/${provider.id}`)}
                   >
@@ -430,8 +554,12 @@ const Explore: React.FC = () => {
                     <p className="text-sm text-[#1A6FD1] font-semibold mb-3">{provider.specialty}</p>
                     
                     <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-5">
-                      <MapPin size={14} /> {provider.location}
-                      <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600 mx-1" />
+                      {provider.enLocal && (
+                        <>
+                          <MapPin size={14} /> {provider.location}
+                          <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600 mx-1" />
+                        </>
+                      )}
                       {provider.price}
                     </div>
 
@@ -500,7 +628,7 @@ const Explore: React.FC = () => {
                 />
                 <MapUpdater center={selectedCity && selectedCity !== 'Toutes' && CITY_COORDINATES[selectedCity] ? CITY_COORDINATES[selectedCity] : DEFAULT_CENTER} />
                 
-                {filteredResults.map(provider => (
+                {filteredResults.filter(provider => provider.enLocal).map(provider => (
                   <Marker key={provider.id} position={[provider.lat, provider.lng]}>
                     <Popup className="custom-popup" closeButton={false}>
                       <div className="flex flex-col p-4 gap-3">
@@ -575,7 +703,7 @@ const Explore: React.FC = () => {
                     <X size={20} />
                   </button>
                 </div>
-                <FilterContent />
+                {filterContent}
                 
                 <button 
                   onClick={() => setIsMobileFiltersOpen(false)}
@@ -588,7 +716,7 @@ const Explore: React.FC = () => {
           </>
         )}
       </AnimatePresence>
-
+      <MobileBottomNav/>
     </div>
   );
 };

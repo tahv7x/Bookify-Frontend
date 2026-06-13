@@ -7,61 +7,61 @@ import Footer from '../../components/Client/Footer';
 import MobileBottomNav from '../../components/Client/MobileBottomNav';
 import { useTheme } from '../../context/ThemeContext';
 
-const FAQS = [
-  {
-    q: "Comment puis-je annuler ou reporter un rendez-vous ?",
-    a: "Vous pouvez gérer vos rendez-vous depuis la section 'Mes Rendez-vous'. Cliquez sur un rendez-vous pour voir les options d'annulation ou de reprogrammation. Attention, certains prestataires peuvent appliquer des frais en cas d'annulation tardive."
-  },
-  {
-    q: "Le paiement s'effectue-t-il en ligne ou sur place ?",
-    a: "Actuellement, tous les paiements s'effectuent directement sur place après votre prestation. Bookify ne prélève aucun frais sur vos réservations."
-  },
-  {
-    q: "Comment contacter un prestataire ?",
-    a: "Une fois votre rendez-vous confirmé, vous pouvez envoyer un message direct au prestataire via l'onglet 'Messages' ou l'appeler via le numéro affiché sur son profil."
-  },
-  {
-    q: "Comment modifier mes informations personnelles ?",
-    a: "Rendez-vous dans la section 'Profil' accessible depuis le menu principal pour modifier votre nom, e-mail, ou photo de profil."
-  }
-];
+import { faqService } from '../../services/faqService';
+import type { FaqItem } from '../../services/faqService';
+import { supportService } from '../../services/supportService';
 
 const HelpSupport: React.FC = () => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [userName, setUserName] = useState("Client");
-  
+  const [userName] = useState(() => {
+    const s = localStorage.getItem('user');
+    if (s) {
+      try {
+        const u = JSON.parse(s);
+        return u.nomComplet || 'Client';
+      } catch { /* ignore */ }
+    }
+    return 'Client';
+  });
+
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
-  
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSent, setIsSent] = useState(false);
 
-  useEffect(() => { 
-    const s = localStorage.getItem('user'); 
-    if (s) { 
-      try { 
-        const u = JSON.parse(s); 
-        setUserName(u.nomComplet); 
-      } catch (e) {} 
-    } 
+  const [faqs, setFaqs] = useState<FaqItem[]>([]);
+
+  useEffect(() => {
+    const fetchFaqs = async () => {
+      try {
+        const data = await faqService.getFaqs();
+        setFaqs(data);
+      } catch (error) {
+        console.error("Erreur chargement FAQs", error);
+      }
+    };
+    fetchFaqs();
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject || !message) return;
     
     setIsSubmitting(true);
-    // Simulate API call to send support message
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      await supportService.createTicket(subject, message);
       setIsSent(true);
       setSubject('');
       setMessage('');
       setTimeout(() => setIsSent(false), 5000);
-    }, 1500);
+    } catch (error) {
+      console.error("Erreur envoi ticket", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -116,13 +116,13 @@ const HelpSupport: React.FC = () => {
                 <MessageSquare className="text-[#1A6FD1]" size={20} /> Questions Fréquentes
               </h2>
               
-              {FAQS.map((faq, idx) => (
-                <div key={idx} className="glass-card rounded-2xl overflow-hidden transition-all duration-300">
+              {faqs.map((faq, idx) => (
+                <div key={faq.idFaq} className="glass-card rounded-2xl overflow-hidden transition-all duration-300">
                   <button 
                     onClick={() => setOpenFaqIndex(openFaqIndex === idx ? null : idx)}
                     className="w-full text-left px-6 py-5 flex items-center justify-between"
                   >
-                    <span className="font-bold text-gray-800 dark:text-gray-200 text-sm pr-4">{faq.q}</span>
+                    <span className="font-bold text-gray-800 dark:text-gray-200 text-sm pr-4">{faq.question}</span>
                     <ChevronDown size={18} className={`text-gray-400 transition-transform duration-300 shrink-0 ${openFaqIndex === idx ? 'rotate-180 text-[#1A6FD1]' : ''}`} />
                   </button>
                   <AnimatePresence>
@@ -134,7 +134,7 @@ const HelpSupport: React.FC = () => {
                         className="overflow-hidden"
                       >
                         <div className="px-6 pb-5 pt-0 text-sm text-gray-500 dark:text-gray-400 leading-relaxed border-t border-gray-100 dark:border-white/5 mt-2 pt-4">
-                          {faq.a}
+                          {faq.reponse}
                         </div>
                       </motion.div>
                     )}

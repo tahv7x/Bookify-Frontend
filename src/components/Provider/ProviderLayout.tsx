@@ -20,6 +20,7 @@ const ProviderLayout: React.FC<ProviderLayoutProps> = ({ children }) => {
 
   // Trigger progress bar on route change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Transient progress bar animation triggered by route change
     setIsNavigating(true);
     const timer = setTimeout(() => setIsNavigating(false), 500);
     return () => clearTimeout(timer);
@@ -35,23 +36,21 @@ const ProviderLayout: React.FC<ProviderLayoutProps> = ({ children }) => {
     '/Mes-Services-Provider': 'services',
     '/Mes-Clients-Provider': 'clients',
     '/Messages': 'messages',
+    '/Support-Provider': 'support',
   };
   
   const activeSection = activeSectionMap[location.pathname] || 'homep';
 
-  const [userName, setUserName] = useState("Prestataire");
-
-  useEffect(() => {
+  const [userName] = useState(() => {
     try {
       const userStr = localStorage.getItem("user");
       if (userStr) {
         const u = JSON.parse(userStr);
-        setUserName(u.nomComplet || u.nom || u.prenom || "Prestataire");
+        return u.nomComplet || u.nom || u.prenom || "Prestataire";
       }
-    } catch {
-      /* ignore */
-    }
-  }, []);
+    } catch { /* ignore */ }
+    return "Prestataire";
+  });
 
   return (
     <div className={`relative min-h-screen font-sans transition-colors duration-500 ease-in-out flex bg-dot-pattern ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>

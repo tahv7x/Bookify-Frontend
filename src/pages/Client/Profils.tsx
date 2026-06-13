@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import AideModel from '../../components/AideModel';
 import { useTheme } from '../../context/ThemeContext';
+import toast from 'react-hot-toast';
 
 type ProfilePage = 'profile' | 'settings';
 interface UserData { firstName: string; lastName: string; email: string; phone: string; city: string; bio: string; }
@@ -173,6 +174,18 @@ const Profils: React.FC = () => {
 
   const handleNotifToggle = (i: number) => setNotifState(p => { const n = p.map((v, j) => j === i ? !v : v); localStorage.setItem('notifState', JSON.stringify(n)); return n; });
   const handlePrivacyToggle = (i: number) => setPrivacyState(p => { const n = p.map((v, j) => j === i ? !v : v); localStorage.setItem('privacyState', JSON.stringify(n)); return n; });
+
+  const handleDeleteAccount = async () => {
+    if (window.confirm("Êtes-vous SÛR de vouloir supprimer définitivement votre compte ? Toutes vos données seront perdues à jamais.")) {
+      try {
+        await api.delete('/auth/delete-account');
+        localStorage.clear();
+        window.location.href = '/login';
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Une erreur s'est produite lors de la suppression.");
+      }
+    }
+  };
 
   const recentAppointments = allRdvs.slice(0, 3).map((r: any) => ({
     doctor: r.prestataire, specialty: r.specialty, date: r.date,
@@ -756,7 +769,7 @@ const Profils: React.FC = () => {
                         </div>
                         <div className="pt-5 mt-3 border-t divider">
                           <p className="text-sm font-bold text-primary-color mb-3">Zone de danger</p>
-                          <button className="btn-danger-ghost"><LogOut size={14} />Supprimer mon compte</button>
+                          <button className="btn-danger-ghost" onClick={handleDeleteAccount}><LogOut size={14} />Supprimer mon compte</button>
                         </div>
                       </div>
                     )}

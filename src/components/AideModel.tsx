@@ -389,22 +389,25 @@ const AideModal: React.FC<AideModalProps> = ({ isOpen, onClose, topic = 'guide' 
   const [currentStep, setCurrentStep] = useState(0);
   const [animDir, setAnimDir] = useState<'left' | 'right'>('right');
   const [visible, setVisible] = useState(false);
-  const [isProvider, setIsProvider] = useState(false);
-
-  useEffect(() => {
+  const [isProvider] = useState(() => {
     try {
       const userStr = localStorage.getItem('user');
       if (userStr) {
         const user = JSON.parse(userStr);
         if (user.role === 'PRESTATAIRE' || user.role === 'PROVIDER' || user.Role === 'PRESTATAIRE' || user.Role === 'PROVIDER') {
-          setIsProvider(true);
+          return true;
         }
       }
-    } catch {}
-  }, []);
+    } catch { /* ignore */ }
+    return false;
+  });
 
   useEffect(() => {
-    if (isOpen) { setTimeout(() => setVisible(true), 10); setCurrentStep(0); }
+    if (isOpen) {
+      setTimeout(() => setVisible(true), 10);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset modal step when opening
+      setCurrentStep(0);
+    }
     else setVisible(false);
   }, [isOpen]);
 

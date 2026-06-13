@@ -44,8 +44,6 @@ export default function RescheduleModal({ isOpen, onClose, appointment, onSucces
     }
   }, [isOpen, appointment]);
 
-  if (!isOpen || !appointment) return null;
-
   // Compute available times based on selected date
   const selectedDayStr = date ? DAYS_MAP[new Date(date).getDay()] : '';
   const daySlots = dispoData.find(d => d.day === selectedDayStr)?.slots || [];
@@ -59,6 +57,8 @@ export default function RescheduleModal({ isOpen, onClose, appointment, onSucces
       setTime('');
     }
   }, [date, dispoData]); // Only re-run when date or dispo changes
+
+  if (!isOpen || !appointment) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

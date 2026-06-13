@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Calendar as CalendarIcon, Clock, Save, Info, AlertCircle } from 'lucide-react';
-import { getMyDisponibilites, addDisponibilite, deleteDisponibilite } from '../../services/provider/disponibiliteService';
+import { getMyDisponibilites, updateMyDisponibilitesBatch } from '../../services/provider/disponibiliteService';
 import toast from 'react-hot-toast';
 import { useTheme } from '../../context/ThemeContext';
 import { motion } from 'framer-motion';
@@ -59,28 +59,16 @@ const Disponibilites: React.FC = () => {
         if (scheduleDay && d.slots && d.slots.length > 0) {
           scheduleDay.dbIds = d.slots.map((s: any) => s.id);
           
-          const startTimes = d.slots.map((s: any) => s.time.substring(0, 5));
-          const endTimes = d.slots.map((s: any) => s.endTime.substring(0, 5));
-          startTimes.sort();
-          endTimes.sort();
-
-          // Check if it's a "Full Day" (single record spanning > 1 hour)
-          if (d.slots.length === 1) {
-            const startH = parseInt(startTimes[0].split(':')[0]);
-            const endH = parseInt(endTimes[0].split(':')[0]);
-            if ((endH - startH) > 1) {
-              scheduleDay.isFullDay = true;
-              scheduleDay.fullStartTime = startTimes[0];
-              scheduleDay.fullEndTime = endTimes[0];
-            } else {
-              scheduleDay.slots[startTimes[0]] = true;
-            }
+          if (d.slots.length === 1 && (d.slots[0].time === null || d.slots[0].time === '00:00')) {
+            scheduleDay.isFullDay = true;
           } else {
             // Multiple slots (Grid Mode)
             d.slots.forEach((s: any) => {
-              const t = s.time.substring(0, 5);
-              if (scheduleDay.slots[t] !== undefined) {
-                scheduleDay.slots[t] = true;
+              if (s.time) {
+                const t = s.time.substring(0, 5);
+                if (scheduleDay.slots[t] !== undefined) {
+                  scheduleDay.slots[t] = true;
+                }
               }
             });
           }
@@ -122,6 +110,36 @@ const Disponibilites: React.FC = () => {
     setSchedule(newSchedule);
   };
 
+  const toggleAllSlotsForDay = (dayIndex: number) => {
+    const newSchedule = [...schedule];
+    const day = newSchedule[dayIndex];
+    if (day.isFullDay) return;
+
+    const allSelected = TIME_SLOTS.every(t => day.slots[t]);
+    TIME_SLOTS.forEach(t => {
+      day.slots[t] = !allSelected;
+    });
+    
+    setSchedule(newSchedule);
+  };
+
+  const toggleAllSlotsForWeek = () => {
+    const newSchedule = [...schedule];
+    const allSelected = newSchedule.every(day => 
+      day.isFullDay || TIME_SLOTS.every(t => day.slots[t])
+    );
+    
+    newSchedule.forEach(day => {
+      if (!day.isFullDay) {
+        TIME_SLOTS.forEach(t => {
+          day.slots[t] = !allSelected;
+        });
+      }
+    });
+    
+    setSchedule(newSchedule);
+  };
+
   const calculateEndTime = (timeStr: string) => {
     const [h, m] = timeStr.split(':').map(Number);
     const date = new Date();
@@ -133,31 +151,23 @@ const Disponibilites: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // 1. Delete all old records for a clean slate
-      const deletePromises: Promise<any>[] = [];
-      for (const day of schedule) {
-        for (const id of day.dbIds) {
-          deletePromises.push(deleteDisponibilite(id));
-        }
-      }
-      await Promise.all(deletePromises);
-
-      // 2. Add new records based on state
-      const addPromises: Promise<any>[] = [];
+      const dtos: { JourSemaine: string, HeureDebut: string | null, HeureFin: string | null, Disponible: boolean }[] = [];
+      
       for (const day of schedule) {
         const dbDay = day.day.substring(0, 3); // "Lundi" -> "Lun"
         if (day.isFullDay) {
-          addPromises.push(addDisponibilite({ Jour: dbDay, HeureDebut: day.fullStartTime, HeureFin: day.fullEndTime, Disponible: true }));
+          dtos.push({ JourSemaine: dbDay, HeureDebut: '00:00', HeureFin: '23:59', Disponible: true });
         } else {
           for (const time of TIME_SLOTS) {
             if (day.slots[time]) {
               const endT = calculateEndTime(time);
-              addPromises.push(addDisponibilite({ Jour: dbDay, HeureDebut: time, HeureFin: endT, Disponible: true }));
+              dtos.push({ JourSemaine: dbDay, HeureDebut: time, HeureFin: endT, Disponible: true });
             }
           }
         }
       }
-      await Promise.all(addPromises);
+      
+      await updateMyDisponibilitesBatch(dtos);
 
       toast.success("Vos horaires ont été enregistrés avec succès !");
       await fetchData(); // Refresh IDs
@@ -249,25 +259,9 @@ const Disponibilites: React.FC = () => {
 
                     {day.isFullDay && (
                       <div className="flex items-center gap-2">
-                        <select 
-                          value={day.fullStartTime}
-                          onChange={(e) => handleChangeTime(index, 'fullStartTime', e.target.value)}
-                          className={`dark:[color-scheme:dark] border rounded-lg pl-3 pr-8 py-1.5 text-xs font-bold outline-none cursor-pointer transition-all ${isDark ? 'bg-black/20 border-white/10 text-white focus:border-blue-500 focus:bg-black/40 backdrop-blur-md' : 'bg-white/50 border-gray-200 text-gray-900 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/10 backdrop-blur-md'}`}
-                        >
-                          {TIME_SLOTS.map(t => (
-                            <option key={t} value={t} className="bg-white dark:bg-[#1A1D24] text-gray-900 dark:text-white">{t}</option>
-                          ))}
-                        </select>
-                        <span className="text-gray-400 font-medium text-xs">-</span>
-                        <select 
-                          value={day.fullEndTime}
-                          onChange={(e) => handleChangeTime(index, 'fullEndTime', e.target.value)}
-                          className={`dark:[color-scheme:dark] border rounded-lg pl-3 pr-8 py-1.5 text-xs font-bold outline-none cursor-pointer transition-all ${isDark ? 'bg-black/20 border-white/10 text-white focus:border-blue-500 focus:bg-black/40 backdrop-blur-md' : 'bg-white/50 border-gray-200 text-gray-900 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/10 backdrop-blur-md'}`}
-                        >
-                          {TIME_SLOTS.map(t => (
-                            <option key={t} value={t} className="bg-white dark:bg-[#1A1D24] text-gray-900 dark:text-white">{t}</option>
-                          ))}
-                        </select>
+                        <span className="text-xs font-bold text-[#0059B2] bg-blue-100 px-3 py-1 rounded-full dark:bg-blue-900/30 dark:text-blue-300">
+                          Prestations sur plusieurs jours
+                        </span>
                       </div>
                     )}
                   </div>
@@ -284,10 +278,24 @@ const Disponibilites: React.FC = () => {
               Les jours cochés "Journée complète" en haut sont verrouillés ici. Pour les autres, cliquez sur les heures pour les rendre disponibles.
             </p>
 
-            <div className="flex items-center gap-5 mb-6 text-xs font-bold">
-              <span className="flex items-center gap-1.5 text-[#0059B2] dark:text-blue-400"><span className="w-3 h-3 rounded-sm bg-blue-100 border border-blue-300 dark:border-transparent dark:bg-blue-500/30 inline-block"/> Journée Verrouillée</span>
-              <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400"><span className="w-3 h-3 rounded-sm bg-emerald-400 inline-block"/> Dispo</span>
-              <span className="flex items-center gap-1.5 text-gray-400"><span className="w-3 h-3 rounded-sm bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 inline-block"/> Indispo / Pause</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-5 mb-6 text-xs font-bold justify-between">
+              <div className="flex flex-wrap items-center gap-5">
+                <span className="flex items-center gap-1.5 text-[#0059B2] dark:text-blue-400"><span className="w-3 h-3 rounded-sm bg-blue-100 border border-blue-300 dark:border-transparent dark:bg-blue-500/30 inline-block"/> Journée Verrouillée</span>
+                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400"><span className="w-3 h-3 rounded-sm bg-emerald-400 inline-block"/> Dispo</span>
+                <span className="flex items-center gap-1.5 text-gray-400"><span className="w-3 h-3 rounded-sm bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 inline-block"/> Indispo / Pause</span>
+              </div>
+              <button
+                onClick={toggleAllSlotsForWeek}
+                className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors flex items-center gap-2 flex-shrink-0"
+              >
+                <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
+                  <div className="bg-emerald-500 rounded-sm"></div>
+                  <div className="bg-emerald-500 rounded-sm"></div>
+                  <div className="bg-emerald-500 rounded-sm"></div>
+                  <div className="bg-emerald-500 rounded-sm"></div>
+                </div>
+                Tout cocher/décocher
+              </button>
             </div>
 
             <div className="overflow-x-auto -mx-2 pb-4">
@@ -295,10 +303,18 @@ const Disponibilites: React.FC = () => {
                 {/* Headers */}
                 <div className="grid gap-2 mb-3" style={{ gridTemplateColumns: '50px repeat(7, 1fr)' }}>
                   <div/>
-                  {schedule.map((d: any) => (
-                    <div key={`header-${d.day}`} className="text-center text-[11px] font-extrabold text-gray-400 uppercase tracking-wider py-1">
+                  {schedule.map((d: any, dayIdx: number) => (
+                    <button 
+                      key={`header-${d.day}`}
+                      onClick={() => toggleAllSlotsForDay(dayIdx)}
+                      disabled={d.isFullDay}
+                      title={`Cocher / Décocher tout pour ${d.day}`}
+                      className={`text-center text-[11px] font-extrabold uppercase tracking-wider py-1 rounded transition-colors
+                        ${d.isFullDay ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:text-emerald-400 dark:hover:bg-emerald-900/30 cursor-pointer'}
+                      `}
+                    >
                       {d.day.substring(0, 3)}
-                    </div>
+                    </button>
                   ))}
                 </div>
 
@@ -314,9 +330,9 @@ const Disponibilites: React.FC = () => {
                       const isFullMode = dayData.isFullDay;
                       const isSelected = dayData.slots[timeLabel];
                       
-                      // Check if timeLabel is within the chosen bounds (inclusive of end time for travel/buffer time!)
-                      const isInRange = timeLabel >= dayData.fullStartTime && timeLabel <= dayData.fullEndTime;
-                      const isControlledByTop = isFullMode && isInRange;
+                      // Check if timeLabel is within the chosen bounds
+                      // For a "Full Day" day, the entire column is controlled and disabled.
+                      const isControlledByTop = isFullMode;
 
                       return (
                         <button
@@ -357,7 +373,7 @@ const Disponibilites: React.FC = () => {
               <div className="bg-white/60 dark:bg-black/20 p-3 rounded-xl border border-white/50 dark:border-white/5">
                 <p className="font-bold text-gray-900 dark:text-gray-200 mb-1 flex items-center gap-1.5"><AlertCircle size={14} className="text-amber-500"/> La Pause Déjeuner</p>
                 <p className="text-gray-600 dark:text-gray-400 text-xs">
-                  Si vous prenez une pause entre 12h et 14h, <strong>décochez</strong> la "Journée Complète" et sélectionnez uniquement les heures du matin et de l'après-midi dans la grille.
+                  Les pauses est deja inclus dans les creneaux de la journee entre 13:00 et 14:00.
                 </p>
               </div>
 

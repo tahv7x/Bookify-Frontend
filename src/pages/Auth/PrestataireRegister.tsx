@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, Sun, Moon, CheckCircle2 } from "lucide-react";
+import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, Sun, Moon, CheckCircle2, MapPin, Check } from "lucide-react";
 import { registerPrestataire } from "../../services/Auth/authRegisterPrestataireService";
 import { login } from "../../services/Auth/authLoginService";
 import logoLight from "../../assets/LogoB.png";
@@ -33,6 +33,9 @@ const PrestataireRegister: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
+  const [enLocal, setEnLocal] = useState(true);
+  const [aDomicile, setADomicile] = useState(false);
+
   const [activeFeature, setActiveFeature] = useState(0);
 
   useEffect(() => {
@@ -54,6 +57,11 @@ const PrestataireRegister: React.FC = () => {
 
     if (!formData.nomComplet || !formData.email || !formData.telephone || !formData.password || !formData.confirmPassword) {
       setErrorMessage("Veuillez remplir tous les champs.");
+      return;
+    }
+
+    if (!enLocal && !aDomicile) {
+      setErrorMessage("Vous devez proposer vos services en local ou à domicile.");
       return;
     }
 
@@ -90,7 +98,9 @@ const PrestataireRegister: React.FC = () => {
         ...formData, 
         address: "Non défini", // Par défaut, sera rempli dans l'onboarding
         latitude: null,
-        longitude: null
+        longitude: null,
+        enLocal,
+        aDomicile
       });
 
       // Connexion automatique
@@ -250,34 +260,36 @@ const PrestataireRegister: React.FC = () => {
                   )}
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="relative group">
-                  <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${focusedInput === 'pass' ? 'text-[#1A6FD1]' : 'text-slate-400'}`} />
-                  <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} onFocus={() => setFocusedInput('pass')} onBlur={() => setFocusedInput(null)} placeholder="Mot de passe" className="w-full pl-11 pr-12 py-3 bg-white/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-[#1A6FD1]/50 focus:border-[#1A6FD1] outline-none transition-all" />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    {formData.password.length >= 8 && (
-                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500 pointer-events-none" />
-                      </motion.div>
-                    )}
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="p-1 text-slate-400 hover:text-[#1A6FD1]">
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Mot de passe</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="relative group">
+                    <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${focusedInput === 'pass' ? 'text-[#1A6FD1]' : 'text-slate-400'}`} />
+                    <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} onFocus={() => setFocusedInput('pass')} onBlur={() => setFocusedInput(null)} placeholder="Mot de passe" className="w-full pl-11 pr-12 py-3 bg-white/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-[#1A6FD1]/50 focus:border-[#1A6FD1] outline-none transition-all" />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                      {formData.password.length >= 8 && (
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 pointer-events-none" />
+                        </motion.div>
+                      )}
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="p-1 text-slate-400 hover:text-[#1A6FD1]">
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div className="relative group">
-                  <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${focusedInput === 'confirm' ? 'text-[#1A6FD1]' : 'text-slate-400'}`} />
-                  <input type={showConfirmPassword ? "text" : "password"} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} onFocus={() => setFocusedInput('confirm')} onBlur={() => setFocusedInput(null)} placeholder="Confirmer" className="w-full pl-11 pr-12 py-3 bg-white/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-[#1A6FD1]/50 focus:border-[#1A6FD1] outline-none transition-all" />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    {formData.confirmPassword.length > 0 && formData.password === formData.confirmPassword && (
-                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500 pointer-events-none" />
-                      </motion.div>
-                    )}
-                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="p-1 text-slate-400 hover:text-[#1A6FD1]">
-                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                  <div className="relative group">
+                    <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${focusedInput === 'confirm' ? 'text-[#1A6FD1]' : 'text-slate-400'}`} />
+                    <input type={showConfirmPassword ? "text" : "password"} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} onFocus={() => setFocusedInput('confirm')} onBlur={() => setFocusedInput(null)} placeholder="Confirmer" className="w-full pl-11 pr-12 py-3 bg-white/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-[#1A6FD1]/50 focus:border-[#1A6FD1] outline-none transition-all" />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                      {formData.confirmPassword.length > 0 && formData.password === formData.confirmPassword && (
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 pointer-events-none" />
+                        </motion.div>
+                      )}
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="p-1 text-slate-400 hover:text-[#1A6FD1]">
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

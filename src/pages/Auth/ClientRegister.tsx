@@ -11,6 +11,14 @@ const ADRESSES_AUTORISEES = [
   "Casablanca", "Rabat", "Marrakech", "Tanger", "Agadir", "Fès", "Oujda"
 ];
 
+const DEFAULT_BACKGROUNDS = [
+  "https://images.unsplash.com/photo-1492724441997-5dc865305da7",
+  "https://images.unsplash.com/photo-1581578731548-c64695cc6952",
+  "https://images.unsplash.com/photo-1521791136064-7986c2920216",
+  "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4",
+  "https://images.unsplash.com/photo-1542744173-8e7e53415bb0"
+];
+
 const ClientRegister: React.FC = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
@@ -39,7 +47,7 @@ const ClientRegister: React.FC = () => {
     const fetchPrestataires = async () => {
       try {
         const data = await getRandomPres();
-        const formatted = data.map((p: any) => ({
+        const formatted = data.map((p: any, index: number) => ({
           id: p.id,
           name: p.nom,
           location: p.location,
@@ -47,7 +55,7 @@ const ClientRegister: React.FC = () => {
           description: p.description || "",
           specialite: p.specialite,
           avatar: p.avatar,
-          background: p.background || "https://images.unsplash.com/photo-1492724441997-5dc865305da7"
+          background: p.background || DEFAULT_BACKGROUNDS[index % DEFAULT_BACKGROUNDS.length]
         }));
         setPreviews(formatted);
       } catch (error) {

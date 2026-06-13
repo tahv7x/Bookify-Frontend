@@ -19,7 +19,7 @@ export interface NavbarProps {
 }
 
 const navItems: NavItem[] = [
-  { id: 'home',            label: 'Home',            icon: Home,          path: '/Home-Client' },
+  { id: 'home',            label: 'Acceuil',            icon: Home,          path: '/Home-Client' },
   { id: 'explore',         label: 'Recherche',       icon: Search,        path: '/Explore' },
   { id: 'dashboard',       label: 'Mon Espace',      icon: LayoutDashboard, path: '/Dashboard-Client' },
   { id: 'mes-rendez-vous', label: 'Mes Rendez-vous', icon: Calendar,      path: '/Mes-Rendez-Vous' },

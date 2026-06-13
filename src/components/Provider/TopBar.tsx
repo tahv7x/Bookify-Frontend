@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ChevronDown, LogOut, User, Search, Bell, Moon, Sun, Menu, X, CheckCircle2 } from "lucide-react";
+import { ChevronDown, LogOut, User, Bell, Moon, Sun, Menu, X, CheckCircle2, Trash2 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useUnreadMessages } from "../../hooks/useUnreadMessages";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
+import api from "../../services/api";
 
 export interface TopBarProps {
   userName?: string;
@@ -14,8 +15,10 @@ export interface TopBarProps {
 interface Notification {
   id: number;
   title: string;
-  time: string;
-  read: boolean;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+  rendezVousId?: number;
 }
 
 const TopBar: React.FC<TopBarProps> = ({
@@ -53,6 +56,48 @@ const TopBar: React.FC<TopBarProps> = ({
 
   const [openNotif, setOpenNotif] = useState(false);
   const [openAvatar, setOpenAvatar] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setNotifLoading(true);
+      const res = await api.get('/Notifications');
+      setNotifications(res.data);
+    } catch {
+      // silently fail
+    } finally {
+      setNotifLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  const markAsRead = async (notif: Notification) => {
+    if (notif.isRead) return;
+    try {
+      await api.put(`/Notifications/${notif.id}/read`);
+      setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, isRead: true } : n));
+    } catch { /* ignore */ }
+  };
+
+  const deleteNotif = async (e: React.MouseEvent, notif: Notification) => {
+    e.stopPropagation();
+    try {
+      await api.delete(`/Notifications/${notif.id}`);
+      setNotifications(prev => prev.filter(n => n.id !== notif.id));
+    } catch { /* ignore */ }
+  };
+
+  const markAllAsRead = async () => {
+    const unread = notifications.filter(n => !n.isRead);
+    try {
+      await Promise.all(unread.map(n => api.put(`/Notifications/${n.id}/read`)));
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch { /* ignore */ }
+  };
 
   const [avatarSrc, setAvatarSrc] = useState<string | null>(
     () => localStorage.getItem('userAvatar')
@@ -81,10 +126,15 @@ const TopBar: React.FC<TopBarProps> = ({
   const searchRef = useRef<HTMLDivElement>(null);
 
 
-  const notifications: Notification[] = [
-    { id: 1, title: "Nouveau rendez‑vous confirmé", time: "Il y a 5 min", read: false },
-    { id: 2, title: "Message reçu d'un client", time: "Il y a 1 heure", read: true }
-  ];
+  const getTimeAgo = (dateString: string) => {
+    const diff = Math.floor((Date.now() - new Date(dateString).getTime()) / 60000);
+    if (diff < 1) return "À l'instant";
+    if (diff < 60) return `Il y a ${diff} min`;
+    const hours = Math.floor(diff / 60);
+    if (hours < 24) return `Il y a ${hours} h`;
+    const days = Math.floor(hours / 24);
+    return days === 1 ? "Hier" : `Il y a ${days} jours`;
+  };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -101,7 +151,8 @@ const TopBar: React.FC<TopBarProps> = ({
     return name.charAt(0).toUpperCase();
   };
 
-  const hasUnread = notifications.some(n => !n.read);
+  const hasUnread = notifications.some(n => !n.isRead);
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const dropdownVariants: Variants = {
     hidden: { opacity: 0, y: 10, scale: 0.95, filter: "blur(4px)" },
@@ -174,7 +225,12 @@ const TopBar: React.FC<TopBarProps> = ({
             >
               <Bell size={20} strokeWidth={2.5} />
               {hasUnread && (
-                <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_0_2px_white] dark:shadow-[0_0_0_2px_#111318] animate-pulse" />
+                <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_0_2px_white] dark:shadow-[0_0_0_2px_#111318] animate-pulse" />
+              )}
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
               )}
             </button>
 
@@ -193,39 +249,58 @@ const TopBar: React.FC<TopBarProps> = ({
                 >
                   <div className="p-5 flex items-center justify-between border-b border-gray-100/50 dark:border-white/5">
                     <h3 className="font-bold text-gray-900 dark:text-white text-base">Notifications</h3>
-                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2 py-1 rounded-md">{notifications.length} nouvelles</span>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={markAllAsRead}
+                        className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                      >
+                        <CheckCircle2 size={12} /> Tout lire
+                      </button>
+                    )}
                   </div>
-                  <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
-                    {notifications.length === 0 ? (
+                  <div className="max-h-[380px] overflow-y-auto custom-scrollbar">
+                    {notifLoading ? (
+                      <div className="py-10 text-center text-sm text-gray-400">Chargement...</div>
+                    ) : notifications.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
                         <div className="w-16 h-16 rounded-full bg-gray-50 dark:bg-white/5 flex items-center justify-center mb-4">
                           <Bell className="text-gray-400 dark:text-gray-500" size={28} />
                         </div>
                         <h4 className="font-bold text-gray-900 dark:text-white text-base">Rien de nouveau</h4>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-[220px]">
-                          Vous êtes à jour !
-                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-[220px]">Vous êtes à jour !</p>
                       </div>
                     ) : (
                       <div className="p-2 space-y-1">
                         {notifications.map(n => (
                           <div
                             key={n.id}
-                            className={`p-3 rounded-2xl text-sm cursor-pointer transition-all duration-200
-                              ${!n.read
+                            onClick={() => markAsRead(n)}
+                            className={`p-3 rounded-2xl text-sm cursor-pointer transition-all duration-200 group relative ${
+                              !n.isRead
                                 ? 'bg-blue-50/50 dark:bg-blue-500/5 hover:bg-blue-100/50 dark:hover:bg-blue-500/10'
                                 : 'hover:bg-gray-50 dark:hover:bg-white/5'
-                              }`}
+                            }`}
                           >
-                            <div className="flex gap-3">
-                              <div className="mt-0.5">
-                                <div className={`w-2 h-2 rounded-full ${!n.read ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]' : 'bg-transparent'}`} />
+                            <div className="flex gap-3 pr-6">
+                              <div className="mt-1 flex-shrink-0">
+                                <div className={`w-2 h-2 rounded-full ${
+                                  !n.isRead ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]' : 'bg-gray-300 dark:bg-gray-600'
+                                }`} />
                               </div>
-                              <div>
-                                <p className={`text-sm ${!n.read ? 'font-bold text-gray-900 dark:text-white' : 'font-medium text-gray-600 dark:text-gray-300'}`}>{n.title}</p>
-                                <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 mt-1 block">{n.time}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm leading-snug ${
+                                  !n.isRead ? 'font-bold text-gray-900 dark:text-white' : 'font-medium text-gray-600 dark:text-gray-300'
+                                }`}>{n.title}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{n.message}</p>
+                                <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 mt-1 block">{getTimeAgo(n.createdAt)}</span>
                               </div>
                             </div>
+                            <button
+                              onClick={(e) => deleteNotif(e, n)}
+                              className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 p-1 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           </div>
                         ))}
                       </div>

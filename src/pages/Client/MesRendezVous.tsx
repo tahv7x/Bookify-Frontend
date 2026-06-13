@@ -167,7 +167,7 @@ const generateGoogleCalendarUrl = (appt: any) => {
       startDate = dStr;
       endDate = dEndStr;
     }
-  } catch(e) {}
+  } catch { /* intentionally ignored */ }
 
   let url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&details=${details}&location=${location}`;
   if(startDate && endDate) {
@@ -194,7 +194,7 @@ const MesRendezVous: React.FC = () => {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedReviewAppt, setSelectedReviewAppt] = useState<Appointment | null>(null);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('asc');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [specialtyFilter, setSpecialtyFilter] = useState<string>('all');
   const filterRef = useRef<HTMLDivElement>(null);
@@ -713,15 +713,27 @@ const MesRendezVous: React.FC = () => {
                               </a>
 
                               {appt.status === 'ACCEPTE' && (
-                                <a
-                                  href={generateGoogleCalendarUrl(appt)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={e => e.stopPropagation()}
-                                  className="flex items-center gap-1.5 px-4 py-2 bg-[#4285F4]/10 text-[#4285F4] rounded-xl text-xs font-bold hover:bg-[#4285F4] hover:text-white transition-all shadow-sm"
-                                >
-                                  <CalendarPlus size={14} />Agenda
-                                </a>
+                                <>
+                                  <button 
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      setSelectedReviewAppt(appt);
+                                      setShowReviewModal(true);
+                                    }}
+                                    className="flex items-center gap-1.5 px-4 py-2 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl text-xs font-bold hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white transition-all shadow-sm"
+                                  >
+                                    <Star size={14} />Laisser un avis
+                                  </button>
+                                  <a
+                                    href={generateGoogleCalendarUrl(appt)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={e => e.stopPropagation()}
+                                    className="flex items-center gap-1.5 px-4 py-2 bg-[#4285F4]/10 text-[#4285F4] rounded-xl text-xs font-bold hover:bg-[#4285F4] hover:text-white transition-all shadow-sm"
+                                  >
+                                    <CalendarPlus size={14} />Agenda
+                                  </a>
+                                </>
                               )}
 
                               {canAct && (
@@ -814,15 +826,15 @@ const MesRendezVous: React.FC = () => {
                           </div>
                         ))}
                       </div>
-                      <a
-                        href={`tel:${nextRdv.phone}`}
-                        className="relative overflow-hidden flex items-center justify-center gap-2 bg-white text-[#1A6FD1] py-3.5 rounded-xl font-bold text-sm transition-all shadow-sm hover:scale-[1.03] hover:shadow-[0_6px_20px_rgba(26,111,209,0.5)] active:scale-[0.97] group"
+                      <button
+                        onClick={() => navigate("/Messages")}
+                        className="relative overflow-hidden flex items-center justify-center gap-2 bg-white text-[#1A6FD1] py-3.5 rounded-xl font-bold text-sm transition-all shadow-sm hover:scale-[1.03] hover:shadow-[0_6px_20px_rgba(26,111,209,0.5)] active:scale-[0.97] group w-full"
                       >
                         <span className="relative z-10 flex items-center gap-2 group-hover:text-white transition-colors duration-300">
                           <MessageCircle size={16} />Contacter
                         </span>
-                        <span className="ab solute inset-0 rounded-xl bg-gradient-to-r from-[#1A6FD1] to-[#0c5a7c] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      </a>
+                        <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#1A6FD1] to-[#0c5a7c] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      </button>
                     </>
                   ) : (
                     <div className="py-4">
@@ -924,6 +936,7 @@ const MesRendezVous: React.FC = () => {
         )}
       </main>
       <Footer />
+      <MobileBottomNav />
     </div>
   );
 };

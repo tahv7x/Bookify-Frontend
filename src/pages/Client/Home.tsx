@@ -13,7 +13,16 @@ const Home: React.FC = () => {
   const [activeSection, setActiveSection] = useState('home');
   const [, setIsScrolled] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('Tous');
-  const [userName, setUserName] = useState('');
+  const [userName] = useState(() => {
+    const s = localStorage.getItem('user');
+    if (s) {
+      try {
+        const u = JSON.parse(s);
+        return u.nomComplet || u.nom || '';
+      } catch { /* ignore */ }
+    }
+    return '';
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -74,6 +83,7 @@ const Home: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Loading state before async fetch
     setSpecialistsLoading(true);
     api.get('/prestataires/random')
       .then(res => {
@@ -91,16 +101,6 @@ const Home: React.FC = () => {
       .finally(() => setSpecialistsLoading(false));
   }, []);
 
-
-  useEffect(() => {
-    const s = localStorage.getItem('user');
-    if (s) {
-      try {
-        const u = JSON.parse(s);
-        setUserName(u.nomComplet || u.nom);
-      } catch (e) { }
-    }
-  }, []);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B0F19] transition-colors duration-200">

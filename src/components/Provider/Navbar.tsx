@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, LayoutDashboard, Home, Calendar, MessageSquare, Briefcase, Users, type LucideIcon } from 'lucide-react';
+import { User, LayoutDashboard, Home, Calendar, MessageSquare, Briefcase, Users, HelpCircle, type LucideIcon } from 'lucide-react';
 import logoLight from '../../assets/LogoB.png';
 import logoDark from '../../assets/LogoW.png';
 import { Link } from "react-router-dom";
@@ -28,6 +28,7 @@ const navItems: NavItem[] = [
   { id: 'clients',          label: 'Mes Clients',     icon: Users,         path: '/Mes-Clients-Provider' },
   { id: 'messages',         label: 'Messages',        icon: MessageSquare, path: '/Messages' },
   { id: 'profils',          label: 'Mon Profil',      icon: User,          path: '/Profils-Provider' },
+  { id: 'support',          label: 'Support',         icon: HelpCircle,    path: '/Support-Provider' },
 ];
 
 const Navbar: React.FC<NavbarProps> = ({ activeSection, onSectionChange }) => {

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import {
   ChevronRight, ChevronLeft, BadgeCheck, MapPin, Zap, Users,
-  Calendar, MessageCircle, ChevronDown, ChevronUp, Send, Clock, Check, Shield, Award, HeartHandshake, Video, Heart, Star
+  Calendar, MessageCircle, ChevronDown, ChevronUp, Send, Clock, Check, Shield, Award, HeartHandshake, Video, Heart, Star, Home
 } from 'lucide-react';
 import { getDisponibilites } from '../../services/provider/disponibiliteService';
 import { getProviderProfile } from '../../services/provider/providerService';
@@ -14,16 +14,34 @@ import Footer from '../../components/Client/Footer';
 import ChatPanel from '../../components/Client/ChatPanel';
 import BookingModal from '../../components/Client/BookingModal';
 import Navbar from '../../components/Client/Navbar';
+import LocationPicker from '../../components/Provider/LocationPicker';
+import { getRendezVousById } from '../../services/Client/rendezVousService';
 
 
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-const TIME_SLOTS = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'];
+const TIME_SLOTS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 
 const buildDefaultGrid = () => {
-  return DAYS.map(day => ({
-    day,
-    slots: TIME_SLOTS.map(time => ({ time, available: false }))
-  }));
+  const grid = [];
+  const today = new Date();
+  const daysMap = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+  const shortDaysMap = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+  
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const dayNameFull = daysMap[d.getDay()];
+    const dayNameShort = shortDaysMap[d.getDay()];
+    const formattedDate = `${dayNameShort} ${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')}`;
+    
+    grid.push({
+      day: formattedDate,
+      dbDay: dayNameFull,
+      date: d.toISOString().split('T')[0],
+      slots: TIME_SLOTS.map(time => ({ time, available: false }))
+    });
+  }
+  return grid;
 };
 
 const StarsRow = ({ rating, size = 13 }: { rating: number; size?: number }) => (
@@ -42,6 +60,7 @@ export default function ProviderProfile() {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const location = useLocation();
   const [isRedirecting, setIsRedirecting] = useState(false);  
   const [provider, setProvider] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -56,6 +75,7 @@ export default function ProviderProfile() {
   const [initialSelectedSlot, setInitialSelectedSlot] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [availabilityData, setAvailabilityData] = useState(buildDefaultGrid());
+  const [rescheduleData, setRescheduleData] = useState<{rdvId: number, serviceId: number, lieu: "En Local" | "À Domicile"} | null>(null);
 
   const isLoggedIn = () => {
     const token = localStorage.getItem("token");
@@ -80,9 +100,24 @@ export default function ProviderProfile() {
       try {
         const u = JSON.parse(s);
         setUserName(u.nomComplet || u.nom);
-      } catch (e) { }
+      } catch { /* intentionally ignored */ }
     }
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const rdvIdParam = params.get('rescheduleRdvId');
+    if (rdvIdParam) {
+      getRendezVousById(Number(rdvIdParam)).then(res => {
+        setRescheduleData({
+          rdvId: res.idRendezVous,
+          serviceId: res.service.idService,
+          lieu: res.lieu as any
+        });
+        setIsBookingModalOpen(true);
+      }).catch(err => console.error("Error fetching rdv", err));
+    }
+  }, [location.search]);
 
   useEffect(() =>{
     const fetchProvider = async() => {
@@ -99,6 +134,10 @@ export default function ProviderProfile() {
           console.log("Not logged in or error checking favorite");
         }
         
+        const serviceImages = (apiData.services || [])
+          .flatMap((s: any) => s.imageUrls ? s.imageUrls.split(',').map((url: string) => url.trim()).filter(Boolean) : [])
+          .sort(() => Math.random() - 0.5);
+
         // MAPPING ENHANCED: taking new properties avatar & adresse from backend
         const mappedProvider = {
           id: apiData.id,
@@ -111,12 +150,12 @@ export default function ProviderProfile() {
           hired: 87, 
           location: apiData.adresse || "Casablanca, Maroc",
           intro: apiData.bio || "Professionnel expérimenté offrant des services de haute qualité. Passionné par mon métier, je m'assure de toujours satisfaire mes clients en proposant un accompagnement sur mesure.",
-          services: (apiData.services || []).map((s: any) => ({ ...s, nom: s.name || s.nom })),
+          services: [...(apiData.services || [])].map((s: any) => ({ ...s, nom: s.name || s.nom })).sort((a: any, b: any) => (Number(a.prix) || 0) - (Number(b.prix) || 0)),
           image: apiData.avatar || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&fit=crop",
           verified: true,
           badge: "Top Pro",
-          // We keep only the avatar as the main photo if no gallery exists in DB
-          photos: apiData.photos && apiData.photos.length > 0 ? apiData.photos : (apiData.avatar ? [apiData.avatar] : []),
+          // Use random service images if available, fallback to existing logic
+          photos: serviceImages.length > 0 ? serviceImages : (apiData.photos && apiData.photos.length > 0 ? apiData.photos : (apiData.avatar ? [apiData.avatar] : [])),
           reviewsList: [], // Will be filled
           credentials: ["Identité vérifiée", "Professionnel certifié"],
           faq: [
@@ -125,10 +164,13 @@ export default function ProviderProfile() {
             { q: "Est-ce que vous vous déplacez à domicile ?", a: "Oui, je me déplace gratuitement dans un rayon de 20km. Au-delà, des frais de déplacement peuvent s'appliquer." }
           ],
           priceNote: "par prestation",
+          price: (apiData.services || []).length > 0 ? Math.min(...(apiData.services || []).map((s: any) => Number(s.prix) || 0)) : 0,
           responseTime: "Répond en moins d'une heure",
           memberSince: "Janvier 2024",
           enLocal: apiData.enLocal,
-          aDomicile: apiData.aDomicile
+          aDomicile: apiData.aDomicile,
+          lat: apiData.latitude,
+          lng: apiData.longitude
         };
         setProvider(mappedProvider);
 
@@ -138,16 +180,28 @@ export default function ProviderProfile() {
           // Combine DB data with the default grid
           const grid = buildDefaultGrid();
           data.forEach((dayData: any) => {
-            const dayIndex = grid.findIndex(d => d.day === dayData.day);
-            if (dayIndex !== -1) {
-              dayData.slots.forEach((dbSlot: any) => {
-                const slotIndex = grid[dayIndex].slots.findIndex(s => s.time === dbSlot.time);
-                if (slotIndex !== -1) {
-                  grid[dayIndex].slots[slotIndex].available = dbSlot.available;
-                }
-              });
-            }
+            const fullDayMap: Record<string, string> = {
+              'lun': 'lundi', 'mar': 'mardi', 'mer': 'mercredi', 'jeu': 'jeudi', 'ven': 'vendredi', 'sam': 'samedi', 'dim': 'dimanche'
+            };
+            const dbDayMapped = fullDayMap[dayData.day.toLowerCase()] || dayData.day.toLowerCase();
+            const matchingGridDays = grid.filter(d => d.dbDay.toLowerCase() === dbDayMapped);
+            matchingGridDays.forEach(gridDay => {
+              const hasFullDay = dayData.slots.some((s: any) => s.time === null || s.time === '00:00');
+              (gridDay as any).isFullDayConfigured = hasFullDay;
+
+              if (hasFullDay) {
+                 gridDay.slots.forEach(s => s.available = dayData.slots.find((s:any) => s.time === null || s.time === '00:00')?.available || true);
+              } else {
+                dayData.slots.forEach((dbSlot: any) => {
+                  const slotIndex = gridDay.slots.findIndex((s: any) => s.time === dbSlot.time);
+                  if (slotIndex !== -1) {
+                    gridDay.slots[slotIndex].available = dbSlot.available;
+                  }
+                });
+              }
+            });
           });
+
           setAvailabilityData(grid);
         } catch (e) {
           console.error("Could not fetch availability", e);
@@ -378,9 +432,6 @@ export default function ProviderProfile() {
                           <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">({provider.reviews})</span>
                         </div>
                         <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-white/5 px-2.5 py-1.5 rounded-lg border border-gray-100 dark:border-white/5 hover:-translate-y-1 hover:shadow-md transition-all cursor-default">
-                          <Users size={14} className="text-[#0059B2] dark:text-[#1A6FD1]"/> {provider.hired} recrutements
-                        </span>
-                        <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-white/5 px-2.5 py-1.5 rounded-lg border border-gray-100 dark:border-white/5 hover:-translate-y-1 hover:shadow-md transition-all cursor-default">
                           <MapPin size={14} className="text-[#0059B2] dark:text-[#1A6FD1]"/> {provider.location}
                         </span>
                         {(provider as any).enLocal && (
@@ -415,13 +466,29 @@ export default function ProviderProfile() {
                         <div className="flex-1 pr-4">
                           <p className="font-bold text-gray-900 dark:text-white text-sm group-hover:text-[#1A6FD1] dark:group-hover:text-blue-400 transition-colors">{s.nom || s.name}</p>
                           <div className="flex items-center gap-3 mt-1.5">
-                            <span className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 font-medium"><Clock size={12} className="text-gray-400 group-hover:text-[#1A6FD1] transition-colors"/> {s.duree} min</span>
-                            <span className="text-[11px] text-blue-500 dark:text-blue-400 flex items-center gap-1 font-bold"><Video size={11}/> Sur place</span>
+                            <span className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 font-medium"><Clock size={12} className="text-gray-400 group-hover:text-[#1A6FD1] transition-colors"/> {s.duree} {s.uniteDuree?.toUpperCase()?.includes('JOUR') ? (s.duree > 1 ? 'jours' : 'jour') : (s.duree > 1 ? 'heures' : 'heure')}</span>
+                            <span className="text-[11px] text-[#1A6FD1] dark:text-blue-400 flex items-center gap-1 font-bold">
+                              {provider.enLocal && provider.aDomicile ? (
+                                <><MapPin size={11}/> Sur place & <Home size={11}/> À domicile</>
+                              ) : provider.enLocal ? (
+                                <><MapPin size={11}/> Sur place</>
+                              ) : (
+                                <><Home size={11}/> À domicile</>
+                              )}
+                            </span>
                           </div>
                         </div>
                         <div className="text-right shrink-0 flex flex-col items-end gap-2">
                           <p className="font-extrabold text-[#0059B2] dark:text-[#1A6FD1] text-sm">{s.prix} MAD</p>
-                          <button onClick={(e) => { e.stopPropagation(); setInitialSelectedSlot(null); handleAuthAction(() => setIsBookingModalOpen(true)); }} className="text-[11px] font-bold text-white bg-gradient-to-r from-[#004a96] to-[#1A6FD1] shadow-md shadow-[#1A6FD1]/30 hover:shadow-lg hover:shadow-[#1A6FD1]/40 px-3 py-1.5 rounded-lg transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-1.5">
+                          <button onClick={(e) => { 
+                            e.stopPropagation(); 
+                            if (s.uniteDuree?.toUpperCase().includes('JOUR')) {
+                              navigate(`/service/${s.id}/book`);
+                            } else {
+                              setInitialSelectedSlot(null); 
+                              handleAuthAction(() => setIsBookingModalOpen(true)); 
+                            }
+                          }} className="text-[11px] font-bold text-white bg-gradient-to-r from-[#004a96] to-[#1A6FD1] shadow-md shadow-[#1A6FD1]/30 hover:shadow-lg hover:shadow-[#1A6FD1]/40 px-3 py-1.5 rounded-lg transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-1.5">
                             <Calendar size={12}/> Réserver
                           </button>
                         </div>
@@ -463,7 +530,7 @@ export default function ProviderProfile() {
                 <div className="overflow-x-auto -mx-1">
                   <div className="min-w-[440px] px-1">
                     {/* Day headers */}
-                    <div className="grid gap-1.5 mb-1.5" style={{ gridTemplateColumns: '52px repeat(6, 1fr)' }}>
+                    <div className="grid gap-1.5 mb-1.5" style={{ gridTemplateColumns: '52px repeat(7, 1fr)' }}>
                       <div/>
                       {availabilityData.map((d: any) => (
                         <div key={d.day} className="text-center text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider py-1">{d.day}</div>
@@ -472,7 +539,7 @@ export default function ProviderProfile() {
 
                     {/* Time rows */}
                     {TIME_SLOTS.map((timeLabel: string, slotIdx: number) => (
-                      <div key={slotIdx} className="grid gap-1.5 mb-1.5" style={{ gridTemplateColumns: '52px repeat(6, 1fr)' }}>
+                      <div key={slotIdx} className="grid gap-1.5 mb-1.5" style={{ gridTemplateColumns: '52px repeat(7, 1fr)' }}>
                         {/* Time label */}
                         <div className="flex items-center justify-end pr-2">
                           <span className="text-[11px] font-bold text-gray-400">{timeLabel}</span>
@@ -596,7 +663,47 @@ export default function ProviderProfile() {
                 </div>
               </div>
 
-
+              {/* LOCATION SECTION IN RIGHT COLUMN */}
+              {provider.enLocal && provider.lat && provider.lng && (
+                <div className="glass-card rounded-3xl p-6 shadow-xl relative bg-white/95 dark:bg-[#111827]/95 fade-up" style={{animationDelay:'.18s'}}>
+                  <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
+                    <MapPin className="text-[#1A6FD1]" size={16}/> Localisation
+                  </h2>
+                  <LocationPicker 
+                    position={{ lat: provider.lat, lng: provider.lng }} 
+                    height="180px" 
+                    readOnly={true} 
+                  />
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mt-3 mb-4 flex items-center gap-1.5">
+                    <MapPin size={14} className="text-gray-400 shrink-0"/> <span className="truncate">{provider.location}</span>
+                  </p>
+                  
+                  <div className="flex flex-col gap-2 pt-2 border-t border-gray-100 dark:border-white/5">
+                    <a 
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${provider.lat},${provider.lng}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="w-full bg-[#E8F0FE] hover:bg-[#D2E3FC] dark:bg-blue-900/20 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800/50 text-[#1967D2] dark:text-blue-400 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                      </svg>
+                      Ouvrir dans Google Maps
+                    </a>
+                    <a 
+                      href={`https://waze.com/ul?ll=${provider.lat},${provider.lng}&navigate=yes`} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="w-full bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/20 dark:hover:bg-cyan-900/40 border border-cyan-200 dark:border-cyan-800/50 text-cyan-700 dark:text-cyan-400 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M12.028 1.196a9.58 9.58 0 00-9.61 9.584c0 3.195 1.573 6.035 4.004 7.828l-1.38 3.518a.65.65 0 00.86.837l4.08-1.637a9.522 9.522 0 002.046.222 9.58 9.58 0 000-19.168v-.005c0-.01-.005-.015-.005-.015l.005-.386.005-.778zm0 18.067a8.423 8.423 0 01-1.99-.24.639.639 0 00-.54.088l-3.32 1.332 1.12-2.855a.65.65 0 00-.09-.646 8.358 8.358 0 01-3.66-6.852 8.465 8.465 0 018.48-8.47 8.465 8.465 0 018.48 8.47 8.465 8.465 0 01-8.48 8.47v.703zm1.616-10.02c1.378 0 2.5.897 2.5 2.01s-1.122 2.01-2.5 2.01-2.5-.897-2.5-2.01 1.122-2.01 2.5-2.01zm-3.23 0c1.377 0 2.5.897 2.5 2.01s-1.123 2.01-2.5 2.01-2.5-.897-2.5-2.01c0-1.113 1.123-2.01 2.5-2.01z" />
+                      </svg>
+                      Ouvrir dans Waze
+                    </a>
+                  </div>
+                </div>
+              )}
 
             </div>
 
@@ -628,6 +735,10 @@ export default function ProviderProfile() {
         provider={provider}
         availabilityData={availabilityData}
         initialSlot={initialSelectedSlot}
+        mode={rescheduleData ? "reschedule" : "book"}
+        rescheduleRdvId={rescheduleData?.rdvId}
+        initialSelectedServiceId={rescheduleData?.serviceId}
+        initialSelectedLieu={rescheduleData?.lieu}
       />
     </div>
   );

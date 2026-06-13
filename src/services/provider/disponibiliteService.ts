@@ -24,3 +24,8 @@ export const deleteDisponibilite = async (id: number) => {
     const res = await api.delete(`/Disponibilites/${id}`);
     return res.data;
 };
+
+export const updateMyDisponibilitesBatch = async (dtos: { JourSemaine: string, HeureDebut: string, HeureFin: string, Disponible: boolean }[]) => {
+    const res = await api.put('/Prestataires/mine/disponibilites', dtos);
+    return res.data;
+};

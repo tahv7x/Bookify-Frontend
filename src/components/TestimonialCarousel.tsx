@@ -19,6 +19,11 @@ export default function TestimonialCarousel({ testimonials }: TestimonialCarouse
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(0); // -1 for left, 1 for right
 
+  const handleNext = () => {
+    setDirection(1);
+    setIndex((prev) => (prev === testimonials.length - 1 ? 0 : prev + 1));
+  };
+
   useEffect(() => {
     const timer = setInterval(() => {
       handleNext();
@@ -29,11 +34,6 @@ export default function TestimonialCarousel({ testimonials }: TestimonialCarouse
   const handlePrev = () => {
     setDirection(-1);
     setIndex((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1));
-  };
-
-  const handleNext = () => {
-    setDirection(1);
-    setIndex((prev) => (prev === testimonials.length - 1 ? 0 : prev + 1));
   };
 
   const slideVariants = {

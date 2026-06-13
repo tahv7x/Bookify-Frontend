@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
   BarChart2, Users, Star, Calendar, TrendingUp,
-  MoreHorizontal, AlignJustify, CheckCircle2, XCircle, Loader2
+  MoreHorizontal, AlignJustify, CheckCircle2, XCircle, Loader2, Award
 } from 'lucide-react';
 import { getMyProviderProfile } from '../../services/provider/providerService';
 import { getStats } from '../../services/provider/getStats';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { motion } from 'framer-motion';
 
@@ -104,25 +105,27 @@ interface DonutChartData { name: string; value: number; color: string; }
 const DonutChartSVG: React.FC<{ data: DonutChartData[] }> = ({ data }) => {
   if (!data || data.length === 0) return null;
   const cx = 70, cy = 65, r = 48, ir = 30;
-  let angle = -Math.PI / 2;
   const total = data.reduce((acc, d) => acc + d.value, 0);
-  const arcs = data.map(d => {
+  const arcs = data.reduce((acc, d) => {
     const sweep = total === 0 ? 0 : (d.value / total) * 2 * Math.PI;
+    const angle = acc.currentAngle;
     const x1 = cx + r * Math.cos(angle);
     const y1 = cy + r * Math.sin(angle);
-    angle += sweep;
-    const x2 = cx + r * Math.cos(angle);
-    const y2 = cy + r * Math.sin(angle);
-    const ix1 = cx + ir * Math.cos(angle);
-    const iy1 = cy + ir * Math.sin(angle);
-    const ix2 = cx + ir * Math.cos(angle - sweep);
-    const iy2 = cy + ir * Math.sin(angle - sweep);
+    const endAngle = angle + sweep;
+    const x2 = cx + r * Math.cos(endAngle);
+    const y2 = cy + r * Math.sin(endAngle);
+    const ix1 = cx + ir * Math.cos(endAngle);
+    const iy1 = cy + ir * Math.sin(endAngle);
+    const ix2 = cx + ir * Math.cos(angle);
+    const iy2 = cy + ir * Math.sin(angle);
     const large = sweep > Math.PI ? 1 : 0;
-    return {
+    acc.items.push({
       d: sweep === 0 ? "" : `M${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large},1 ${x2.toFixed(2)},${y2.toFixed(2)} L${ix1.toFixed(2)},${iy1.toFixed(2)} A${ir},${ir} 0 ${large},0 ${ix2.toFixed(2)},${iy2.toFixed(2)} Z`,
       color: d.color,
-    };
-  });
+    });
+    acc.currentAngle = endAngle;
+    return acc;
+  }, { items: [] as { d: string; color: string }[], currentAngle: -Math.PI / 2 }).items;
 
   return (
     <svg viewBox="0 0 140 130" className="w-full transition-all duration-500" style={{ height: 130 }}>
@@ -169,26 +172,100 @@ const Card: React.FC<CardProps> = ({ children, className = "", style, delay = 0 
   );
 };
 
-// ─── CALENDAR (Static for visual) ─────────────────────────────────────────────
-const CAL_DAYS  = ["Lu","Ma","Me","Je","Ve","Sa","Di"];
-const CAL_WEEKS = [
-  [28,29,30,31, 1, 2, 3],
-  [ 4, 5, 6, 7, 8, 9,10],
-  [11,12,13,14,15,16,17],
-  [18,19,20,21,22,23,24],
-  [25,26,27,28,29,30, 1],
-];
-const CAL_RANGE = [27,28,29,30];
+// ─── CALENDAR (Dynamic) ─────────────────────────────────────────────────────
+const CAL_DAYS = ["Lu","Ma","Me","Je","Ve","Sa","Di"];
+
+type RdvDay = { day: number; statut: string };
+
+const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string; ring: string; label: string }> = {
+  ACCEPTE:    { bg: 'bg-emerald-50',    text: 'text-emerald-700',  dot: 'bg-emerald-500',  ring: 'ring-emerald-200',  label: 'Confirmé' },
+  EN_ATTENTE: { bg: 'bg-blue-50',       text: 'text-blue-700',     dot: 'bg-blue-500',     ring: 'ring-blue-200',     label: 'En attente' },
+  ANNULE:     { bg: 'bg-red-50',        text: 'text-red-700',      dot: 'bg-red-500',      ring: 'ring-red-200',      label: 'Annulé' },
+};
+const STATUS_COLORS_DARK: Record<string, { bg: string; text: string; ring: string }> = {
+  ACCEPTE:    { bg: 'bg-emerald-900/30', text: 'text-emerald-400', ring: 'ring-emerald-500/30' },
+  EN_ATTENTE: { bg: 'bg-blue-900/30',    text: 'text-blue-400',    ring: 'ring-blue-500/30' },
+  ANNULE:     { bg: 'bg-red-900/30',     text: 'text-red-400',     ring: 'ring-red-500/30' },
+};
+
+const DynamicCalendar: React.FC<{ rdvDays: RdvDay[] }> = ({ rdvDays }) => {
+  const { isDark } = useTheme();
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const today = now.getDate();
+  const monthLabel = now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+  // Build a map: day → statut
+  const rdvMap = new Map<number, string>();
+  rdvDays.forEach(({ day, statut }) => rdvMap.set(day, statut));
+
+  // Day of week of first day (Mon=0 ... Sun=6)
+  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const cells: (number | null)[] = [
+    ...Array(firstDow).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1)
+  ];
+  // Pad to full weeks
+  while (cells.length % 7 !== 0) cells.push(null);
+  const weeks: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+
+  return (
+    <div>
+      <p className="text-sm font-bold text-center text-gray-500 dark:text-gray-400 mb-4 capitalize">{monthLabel}</p>
+      <div className="grid grid-cols-7 gap-1 text-center mb-2">
+        {CAL_DAYS.map(d => <div key={d} className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{d}</div>)}
+      </div>
+      <div className="flex flex-col gap-1">
+        {weeks.map((w, wi) => (
+          <div key={wi} className="grid grid-cols-7 gap-1 text-center">
+            {w.map((d, di) => {
+              const isToday = d === today;
+              const statut = d !== null ? rdvMap.get(d) : undefined;
+              const hasRdv = !!statut;
+              const lightC = statut ? (STATUS_COLORS[statut] || STATUS_COLORS.EN_ATTENTE) : null;
+              const darkC  = statut ? (STATUS_COLORS_DARK[statut] || STATUS_COLORS_DARK.EN_ATTENTE) : null;
+              return (
+                <div key={di} className={`
+                  text-sm py-1.5 font-semibold rounded-xl transition-colors
+                  ${!d ? 'text-transparent' : ''}
+                  ${isToday ? 'bg-[#0059B2] text-white shadow-md dark:bg-blue-500' : ''}
+                  ${hasRdv && !isToday && !isDark ? `${lightC!.bg} ${lightC!.text} ring-1 ${lightC!.ring}` : ''}
+                  ${hasRdv && !isToday && isDark  ? `${darkC!.bg} ${darkC!.text} ring-1 ${darkC!.ring}` : ''}
+                  ${!isToday && !hasRdv && d ? 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5 cursor-pointer' : ''}
+                `}>
+                  {d ?? ''}
+                  {hasRdv && !isToday && <div className={`w-1 h-1 ${lightC!.dot} rounded-full mx-auto mt-0.5`} />}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-white/5 flex-wrap">
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#0059B2]"/><span className="text-xs text-gray-500 dark:text-gray-400">Aujourd'hui</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"/><span className="text-xs text-gray-500 dark:text-gray-400">Confirmé</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-500"/><span className="text-xs text-gray-500 dark:text-gray-400">En attente</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500"/><span className="text-xs text-gray-500 dark:text-gray-400">Annulé</span></div>
+      </div>
+    </div>
+  );
+};
 
 // ─── MAIN DASHBOARD ──────────────────────────────────────────────────────────
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [providerProfile, setProviderProfile] = useState<any>(null);
   
   // Real data state
-  const [stats, setStats] = useState({ revenus: 0, rdvToday: 0 });
+  const [stats, setStats] = useState({ revenus: 0, rdvThisMonth: 0, noteMoyenne: 0, totalClients: 0, clientsThisMonth: 0, rdvEnAttente: 0, rdvDaysThisMonth: [] as RdvDay[] });
   const [areaData, setAreaData] = useState<AreaChartData[]>([]);
   const [barData, setBarData] = useState<BarChartData[]>([]);
   const [donutData, setDonutData] = useState<DonutChartData[]>([]);
+  const [topServices, setTopServices] = useState<{ name: string; count: number; revenue: number }[]>([]);
   
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -200,10 +277,19 @@ const Dashboard: React.FC = () => {
       setProviderProfile(prof);
 
       const statsData = await getStats(prof.id);
-      setStats({ revenus: statsData.revenus || 0, rdvToday: statsData.rdvToday || 0 });
+      setStats({
+        revenus: statsData.revenus || 0,
+        rdvThisMonth: statsData.rdvThisMonth || 0,
+        noteMoyenne: statsData.noteMoyenne || 0,
+        totalClients: statsData.totalClients || 0,
+        clientsThisMonth: statsData.clientsThisMonth || 0,
+        rdvEnAttente: statsData.rdvEnAttente || 0,
+        rdvDaysThisMonth: statsData.rdvDaysThisMonth || [],
+      });
       if (statsData.areaData) setAreaData(statsData.areaData);
       if (statsData.barData) setBarData(statsData.barData);
       if (statsData.donutData) setDonutData(statsData.donutData);
+      if (statsData.topServices) setTopServices(statsData.topServices);
 
       const apptsRes = await api.get(`/RendezVous/prestataire/${prof.id}`);
       setAppointments(apptsRes.data);
@@ -214,7 +300,6 @@ const Dashboard: React.FC = () => {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     loadDashboardData();
   }, []);
@@ -248,9 +333,10 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  const pendingRequests = appointments.filter(a => a.statut === "EN_ATTENTE").map(a => a.client.nomComplet);
+  const pendingRequests = appointments.filter(a => a.statut === "EN_ATTENTE");
   const upcomingAppts = appointments
     .filter(a => a.statut === "ACCEPTE" && new Date(a.dateDebut) >= new Date())
+    .sort((a, b) => new Date(a.dateDebut).getTime() - new Date(b.dateDebut).getTime())
     .slice(0, 5)
     .map(appt => {
       const d = new Date(appt.dateDebut);
@@ -297,10 +383,10 @@ const Dashboard: React.FC = () => {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10"
         >
-          <KpiCard dark icon={<BarChart2 size={24} className="text-white" />} label="Revenus (Mois)" value={`${stats.revenus} MAD`} />
-          <KpiCard icon={<Users size={24} className="text-[#0059B2] dark:text-blue-400" />} label="Rendez-vous" value={stats.rdvToday.toString()} />
-          <KpiCard icon={<Calendar size={24} className="text-emerald-600 dark:text-emerald-400" />} label="En attente" value={pendingRequests.length.toString()} />
-          <KpiCard icon={<Star size={24} className="text-yellow-600 dark:text-yellow-400" />} label="Note Globale" value={providerProfile?.note?.toFixed(1) || "N/A"} />
+        <KpiCard dark icon={<BarChart2 size={24} className="text-white" />} label="Revenus ce mois" value={`${stats.revenus.toLocaleString('fr-FR')} MAD`} />
+          <KpiCard icon={<Calendar size={24} className="text-[#0059B2] dark:text-blue-400" />} label="RDV ce mois" value={stats.rdvThisMonth.toString()} />
+          <KpiCard icon={<Users size={24} className="text-emerald-600 dark:text-emerald-400" />} label="Clients ce mois" value={stats.clientsThisMonth.toString()} />
+          <KpiCard icon={<Star size={24} className="text-yellow-600 dark:text-yellow-400" />} label="Note moyenne" value={stats.noteMoyenne ? stats.noteMoyenne.toFixed(1) : 'N/A'} />
         </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
@@ -316,16 +402,47 @@ const Dashboard: React.FC = () => {
           <AreaChartSVG data={areaData} />
         </Card>
 
-        {/* BAR CHART */}
+        {/* TOP SERVICES */}
         <Card delay={0.4}>
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="text-2xl text-[#0f2a5e] dark:text-white" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>Cette semaine</h3>
-              <p className="text-sm text-gray-500 font-medium mt-1">Nbr. de rendez-vous</p>
+              <h3 className="text-2xl text-[#0f2a5e] dark:text-white" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>Top services</h3>
+              <p className="text-sm text-gray-500 font-medium mt-1">Les plus demandés</p>
             </div>
-            <button className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors"><MoreHorizontal size={20}/></button>
+            <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+              <Award size={18} className="text-[#0059B2] dark:text-blue-400" />
+            </div>
           </div>
-          <BarChartSVG data={barData} />
+          {topServices.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">Aucun service réservé pour l'instant.</p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {topServices.map((svc, i) => {
+                const maxCount = topServices[0]?.count || 1;
+                const pct = Math.round((svc.count / maxCount) * 100);
+                const medals = ['🥇','🥈','🥉'];
+                return (
+                  <div key={i}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{medals[i] ?? ''}</span>
+                        <span className="text-sm font-bold text-[#0f2a5e] dark:text-white truncate max-w-[130px]">{svc.name}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-bold text-[#0059B2] dark:text-blue-400">{svc.count} RDV</span>
+                      </div>
+                    </div>
+                    <div className="w-full h-2 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${pct}%`, background: i === 0 ? '#0059B2' : i === 1 ? '#60a5fa' : '#bfdbfe' }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Card>
       </div>
 
@@ -335,7 +452,7 @@ const Dashboard: React.FC = () => {
           <Card className="flex-1" delay={0.5}>
             <div className="flex justify-between items-center mb-8">
               <h3 className="text-2xl text-[#0f2a5e] dark:text-white" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>Demandes récentes</h3>
-              <button className="text-[#0059B2] dark:text-blue-400 text-sm font-bold hover:underline bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-xl transition-colors">Voir tout</button>
+              <button className="text-[#0059B2] dark:text-blue-400 text-sm font-bold hover:underline bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-xl transition-colors" onClick={() => navigate('/Mes-Rendez-Vous-Provider') }>Voir tout</button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -397,7 +514,9 @@ const Dashboard: React.FC = () => {
                 {donutData.map((d, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <div className="w-3.5 h-3.5 rounded-full shadow-sm" style={{ backgroundColor: d.color }} />
-                    <div className="flex-1 text-sm text-gray-600 dark:text-gray-300 font-medium">{d.name}</div>
+                    <div className="flex-1 text-sm text-gray-600 dark:text-gray-300 font-medium">
+                      {d.name === 'EN_ATTENTE' ? 'En attente' : d.name === 'ACCEPTE' ? 'Accepté' : d.name === 'TERMINE' ? 'Terminé' : d.name === 'ANNULE' ? 'Annulé' : d.name === 'REFUSE' ? 'Refusé' : d.name}
+                    </div>
                     <div className="text-sm font-bold text-[#0f2a5e] dark:text-white">{d.value}%</div>
                   </div>
                 ))}
@@ -413,48 +532,30 @@ const Dashboard: React.FC = () => {
               <h3 className="text-2xl text-[#0f2a5e] dark:text-white" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>Calendrier</h3>
               <button className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10 flex items-center justify-center transition-colors"><MoreHorizontal size={18} className="text-gray-500"/></button>
             </div>
-            <div className="grid grid-cols-7 gap-1 text-center mb-4">
-              {CAL_DAYS.map(d => <div key={d} className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{d}</div>)}
-            </div>
-            <div className="flex flex-col gap-2">
-              {CAL_WEEKS.map((w, wi) => (
-                <div key={wi} className="grid grid-cols-7 gap-1 text-center">
-                  {w.map((d, di) => {
-                    const isRange = CAL_RANGE.includes(d);
-                    const isStart = d === CAL_RANGE[0];
-                    const isEnd = d === CAL_RANGE[CAL_RANGE.length - 1];
-                    return (
-                      <div key={di} className={`
-                        text-sm py-2 font-semibold transition-colors cursor-pointer rounded-xl
-                        ${(isStart || isEnd) 
-                          ? 'bg-[#0059B2] text-white shadow-md dark:bg-blue-500 dark:text-white' 
-                          : isRange 
-                            ? 'bg-blue-50 text-[#0059B2] dark:bg-blue-900/30 dark:text-blue-400' 
-                            : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5'}
-                      `}>
-                        {d}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
+            <DynamicCalendar rdvDays={stats.rdvDaysThisMonth} />
           </Card>
 
           <Card className="flex-1" delay={0.8}>
             <h3 className="text-2xl text-[#0f2a5e] dark:text-white mb-6" style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}>À venir</h3>
             <div className="flex flex-col gap-5">
               {upcomingAppts.map((appt, i) => (
-                <div key={i} className="flex gap-4 group cursor-pointer p-2 -mx-2 rounded-2xl hover:bg-white/60 dark:hover:bg-[#1A1D24]/80 transition-all duration-300">
-                  <div className="flex flex-col items-center">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/20 text-[#0059B2] dark:text-blue-400 flex items-center justify-center font-bold text-base shadow-sm group-hover:bg-gradient-to-br group-hover:from-blue-600 group-hover:to-indigo-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-blue-500/20 transition-all duration-300 group-hover:-translate-y-0.5">
-                      {appt.time.split(':')[0]}
+                <div key={i} className="flex items-start gap-4 p-3 -mx-3 rounded-2xl cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-900/20 hover:shadow-sm border border-transparent hover:border-blue-100/50 dark:hover:border-blue-800/30 transition-all duration-300 group">
+                  <div className="flex-shrink-0">
+                    <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/30 text-[#0059B2] dark:text-blue-400 flex flex-col items-center justify-center shadow-sm group-hover:bg-[#0059B2] group-hover:text-white dark:group-hover:bg-blue-500 dark:group-hover:text-white transition-all duration-300">
+                      <span className="font-bold text-lg leading-none">{appt.date.split(' ')[0]}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider mt-0.5">{appt.date.split(' ')[1]}</span>
                     </div>
-                    {i !== upcomingAppts.length - 1 && <div className="w-px h-full bg-gray-100 dark:bg-white/5 my-2" />}
                   </div>
-                  <div className="pt-1 pb-5 flex-1 border-b border-gray-50 dark:border-white/5 group-last:border-0 group-last:pb-1">
-                    <p className="text-base font-bold text-[#0f2a5e] dark:text-white group-hover:text-[#0059B2] transition-colors">{appt.name}</p>
-                    <p className="text-sm text-gray-500 font-medium mt-1">{appt.service}</p>
+                  <div className="flex-1 py-1">
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="font-bold text-[#0f2a5e] dark:text-white text-base group-hover:text-[#0059B2] dark:group-hover:text-blue-400 transition-colors">
+                        {appt.name}
+                      </h4>
+                      <span className="text-xs font-bold text-[#0059B2] dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 px-2.5 py-1 rounded-lg">
+                        {appt.time}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{appt.service}</p>
                   </div>
                 </div>
               ))}

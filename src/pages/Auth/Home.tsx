@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { faqService } from "../../services/faqService";
 
 // IMPORT DYAL L'CONTEXT GLOBAL
 import { useTheme } from "../../context/ThemeContext";
@@ -120,6 +121,27 @@ export default function Home() {
     }
   }, [lastScrollY]);
 
+  const [faqItems, setFaqItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchFaqs = async () => {
+      try {
+        const data = await faqService.getFaqs();
+        const icons = [Clock, Shield, CreditCard, MessageSquare, Zap, BarChart3];
+        const formattedFaqs = data.map((faq, index) => ({
+          id: faq.idFaq.toString(),
+          icon: icons[index % icons.length],
+          question: faq.question,
+          answer: faq.reponse,
+        }));
+        setFaqItems(formattedFaqs);
+      } catch (error) {
+        console.error("Erreur chargement FAQs", error);
+      }
+    };
+    fetchFaqs();
+  }, []);
+
   // Fonction dédiée au scroll pour éviter les bugs CSS avec overflow-x-hidden
   const handleScroll = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>, targetId: string) => {
     e.preventDefault();
@@ -172,44 +194,7 @@ export default function Home() {
     },
   ];
 
-  const faqItems = [
-    {
-      id: "1",
-      icon: Clock,
-      question: "Combien de temps faut-il pour réserver?",
-      answer: "La plupart des réservations se font en moins d'une minute. Cherchez le professionnel, choisissez un créneau disponible et confirmez. C'est tout! Les rappels automatiques vous seront envoyés avant votre rendez-vous.",
-    },
-    {
-      id: "2",
-      icon: Shield,
-      question: "Comment vérifiez-vous les professionnels?",
-      answer: "Tous nos professionnels passent par une vérification complète d'identité et de diplômes. Les avis des utilisateurs aident aussi à maintenir la qualité de la plateforme. Seuls les pros vérifiés peuvent exercer sur Bookify.",
-    },
-    {
-      id: "3",
-      icon: CreditCard,
-      question: "Les paiements sont-ils sécurisés?",
-      answer: "Oui, nous utilisons un chiffrement SSL et des paiements via partenaires de confiance. Aucune information bancaire n'est stockée sur nos serveurs. Vos données sont en sécurité.",
-    },
-    {
-      id: "4",
-      icon: MessageSquare,
-      question: "Puis-je modifier ou annuler ma réservation?",
-      answer: "Bien sûr! Vous pouvez annuler gratuitement jusqu'à 24h avant votre rendez-vous. Pour les modifications, contactez directement le professionnel via la plateforme.",
-    },
-    {
-      id: "5",
-      icon: Zap,
-      question: "Qu'est-ce qui me pousse à choisir Bookify?",
-      answer: "Réservation instantanée, pros vérifiés, paiements sécurisés, rappels automatiques, et une communauté de confiance. Pas d'application complexe, juste une marketplace efficace.",
-    },
-    {
-      id: "6",
-      icon: BarChart3,
-      question: "Que gagnent les professionnels?",
-      answer: "Plus de visibilité, plus de clients, une gestion agenda simplifiée, et des outils pour gérer votre activité. Les pros qui utilisent Bookify rapportent une augmentation moyenne de 35% de leurs rendez-vous.",
-    },
-  ];
+  // FAQ items fetchees mnin l'API
 
   return (
     <div className="relative min-h-screen font-poppins antialiased overflow-x-hidden bg-[#FAFAFA] text-slate-900 dark:bg-[#0f1117] dark:text-[#e2e8f0] bg-dot-pattern transition-colors duration-300">
@@ -324,7 +309,7 @@ export default function Home() {
             </motion.p>
 
             <motion.div variants={fadeUp} className="mt-10 flex flex-col sm:flex-row flex-wrap gap-4">
-              <Link to="/" className="group inline-flex items-center justify-center sm:justify-start gap-2 px-6 py-3.5 rounded-xl text-white font-medium bg-gradient-to-br from-[#004a96] to-[#1A6FD1] shadow-[0_4px_12px_-2px_#1A6FD1] hover:shadow-[0_6px_16px_-2px_#1A6FD1] transition-all hover:-translate-y-0.5">
+              <Link to="/ClientRegister" className="group inline-flex items-center justify-center sm:justify-start gap-2 px-6 py-3.5 rounded-xl text-white font-medium bg-gradient-to-br from-[#004a96] to-[#1A6FD1] shadow-[0_4px_12px_-2px_#1A6FD1] hover:shadow-[0_6px_16px_-2px_#1A6FD1] transition-all hover:-translate-y-0.5">
                 Trouver un professionnel
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>

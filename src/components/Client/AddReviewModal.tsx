@@ -37,7 +37,7 @@ const AddReviewModal: React.FC<AddReviewModalProps> = ({ isOpen, onClose, onSucc
         const u = JSON.parse(s);
         const clientId = u.idUtilisateur || u.id;
         if (clientId) {
-          await createAvis(clientId, {
+          await createAvis({
             idPrestataire: prestataireId,
             idRendezVous: rendezVousId,
             note: rating,

@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/static-components */
+ 
 import React, { useEffect, useState } from 'react';
 import { Calendar, Clock, CheckCircle, TrendingUp, Activity, Star, ArrowUpRight, ArrowDownRight, Stethoscope, Heart, Brain, ChevronRight, FileText, MoreVertical } from 'lucide-react';
 import Navbar from '../../components/Client/Navbar';
@@ -57,8 +57,27 @@ const SkHistItem = () => (
 /* ─── Main ─── */
 const Dashboard: React.FC = () => {
   const { theme } = useTheme();
-  const [userName, setUserName] = useState('');
-  const [userId, setUserId] = useState<number | null>(null);
+  const [userName] = useState(() => {
+    const s = localStorage.getItem('user');
+    if (s) {
+      try {
+        const u = JSON.parse(s);
+        return u.nom || u.nomComplet || u.NomComplet || '';
+      } catch { /* ignore */ }
+    }
+    return '';
+  });
+  const [userId] = useState<number | null>(() => {
+    const s = localStorage.getItem('user');
+    if (s) {
+      try {
+        const u = JSON.parse(s);
+        const id = u.id || u.idUtilisateur || u.IdUtilisateur;
+        return id ? Number(id) : null;
+      } catch { /* ignore */ }
+    }
+    return null;
+  });
   const [activeSection, setActiveSection] = useState<string>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
@@ -76,7 +95,7 @@ const Dashboard: React.FC = () => {
         const { getMyFavorites } = await import('../../services/Client/favorisService');
         const data = await getMyFavorites();
         if (data) setMyFavs(data.slice(0, 4));
-      } catch(e) {}
+      } catch { /* ignore */ }
     };
     fetchFavs();
   }, []);
@@ -104,18 +123,6 @@ const Dashboard: React.FC = () => {
     ANNULE:     { label: 'Annulé',     type: 'refused'  },
     TERMINE:    { label: 'Terminé',    type: 'accepted' },
   };
-
-  useEffect(() => {
-    const s = localStorage.getItem('user');
-    if (s) {
-      try {
-        const u = JSON.parse(s);
-        setUserName(u.nom || u.nomComplet || u.NomComplet || '');
-        const id = u.id || u.idUtilisateur || u.IdUtilisateur;
-        if (id) setUserId(Number(id));
-      } catch (e) {}
-    }
-  }, []);
 
   useEffect(() => {
     if (!userId) return;
