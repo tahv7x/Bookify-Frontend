@@ -600,6 +600,12 @@ const Explore: React.FC = () => {
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Aucun résultat</h3>
                 <p className="text-gray-500 max-w-sm mx-auto text-sm">Essayez de modifier vos filtres ou de chercher avec d'autres mots-clés.</p>
+                {searchMode === 'service' && searchQuery && (
+                  <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl max-w-sm mx-auto border border-blue-100 dark:border-blue-800/30">
+                    <p className="text-sm text-blue-800 dark:text-blue-300 mb-3 font-medium">Vous cherchez une profession (ex: Électricien, Dentiste) ?</p>
+                    <button onClick={() => setSearchMode('provider')} className="w-full bg-[#1A6FD1] text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:bg-blue-700 shadow-md">Chercher par Prestataire</button>
+                  </div>
+                )}
                 <button 
                   onClick={() => { setSearchQuery(''); setSelectedCategory('Tous'); setSelectedCity('Toutes'); setMinRating(0); setOnlyAvailable(false); }}
                   className="mt-6 text-[#1A6FD1] font-semibold text-sm hover:underline"

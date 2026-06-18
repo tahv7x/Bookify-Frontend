@@ -59,7 +59,7 @@ const Home: React.FC = () => {
     'Santé & médical': [{ title: 'Médecin généraliste', img: 'https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=600&h=400&fit=crop' }, { title: 'Dentiste', img: 'https://images.unsplash.com/photo-1598256989800-fe5f95da9787?w=600&h=400&fit=crop' }, { title: 'Psychologue', img: 'https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=600&h=400&fit=crop' }, { title: 'Vétérinaire', img: 'https://images.unsplash.com/photo-1628009368231-7bb7cfcb0def?w=600&h=400&fit=crop' }],
     'Beauté & Bien-être': [{ title: 'Coiffeur', img: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&h=400&fit=crop' }, { title: 'Maquilleur', img: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=600&h=400&fit=crop' }, { title: 'Prothésiste ongulaire', img: 'https://images.unsplash.com/photo-1610992015732-2449b76344bc?w=600&h=400&fit=crop' }],
     'Services professionnels': [{ title: 'Avocat', img: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=600&h=400&fit=crop' }, { title: 'Consultant', img: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=600&h=400&fit=crop' }, { title: 'Coach', img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=600&h=400&fit=crop' }],
-    'Services techniques': [{ title: 'Mecanicien', img: 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&h=400&fit=crop' }, { title: 'Plombier', img: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=600&h=400&fit=crop' }, { title: 'Électricien', img: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=600&h=400&fit=crop' }, { title: 'Nettoyage', img: 'https://images.unsplash.com/photo-1628177142898-93e36e4e3a50?w=600&h=400&fit=crop' }],
+    'Services techniques': [{ title: 'Mecanicien', img: 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&h=400&fit=crop' }, { title: 'Plombier', img: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=600&h=400&fit=crop' }, { title: 'Electricien', img: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=600&h=400&fit=crop' }, { title: 'Nettoyage', img: 'https://images.unsplash.com/photo-1628177142898-93e36e4e3a50?w=600&h=400&fit=crop' }],
   };
 
   const [specialists, setSpecialists] = useState<any[]>([]);
@@ -72,15 +72,7 @@ const Home: React.FC = () => {
     { icon: Star, title: 'Avis Authentiques', description: 'Consultez les avis réels de milliers de patients' }
   ];
 
-  const [stats, setStats] = useState([{ number: 0, label: 'Clients Actifs' }, { number: 0, label: 'Spécialistes' }, { number: 0, label: 'Rendez-vous' }, { number: 0, label: 'Note Moyenne' }]);
 
-  useEffect(() => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5148/api';
-    fetch(`${baseUrl}/stats`)
-      .then(r => r.json())
-      .then(d => setStats([{ number: d.clients, label: 'Clients Actifs' }, { number: d.specialists, label: 'Spécialistes' }, { number: d.appointments, label: 'Rendez-vous' }, { number: d.averageRating, label: 'Note Moyenne' }]))
-      .catch(() => { });
-  }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Loading state before async fetch
@@ -216,7 +208,7 @@ const Home: React.FC = () => {
                     delay: idx * 0.06,
                     ease: [0.25, 0.1, 0.25, 1],
                   }}
-                  onClick={() => navigate(`/Explore?q=${encodeURIComponent(service.title)}&category=${encodeURIComponent(selectedCategory)}`)}
+                  onClick={() => navigate(`/Explore?q=${encodeURIComponent(service.title)}&category=${encodeURIComponent(selectedCategory)}&mode=provider`)}
                   className="group cursor-pointer relative overflow-hidden rounded-2xl glass-card w-full sm:w-[calc(50%-12px)] lg:w-[calc(25%-18px)] min-w-[240px] max-w-[300px]"
                 >
                   <div className="aspect-[4/3] w-full overflow-hidden relative">

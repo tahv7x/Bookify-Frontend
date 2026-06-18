@@ -463,15 +463,10 @@ const Profils: React.FC = () => {
                           <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Catégorie</label>
                           <select className={`w-full px-4 py-3 rounded-xl border text-sm font-medium transition-all outline-none ${isEditing ? 'bg-white dark:bg-[#1A1D24] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:border-[#0059B2] focus:ring-2 focus:ring-blue-500/20' : 'bg-gray-50 dark:bg-white/5 border-transparent text-gray-500 cursor-not-allowed appearance-none'}`} value={formData.categorie} disabled={!isEditing} onChange={e=>setFormData(p=>({...p,categorie:e.target.value}))}>
                             <option value="">Sélectionner...</option>
-                            <option value="Plombier">Plombier</option>
-                            <option value="Électricien">Électricien</option>
-                            <option value="Menuisier">Menuisier</option>
-                            <option value="Mécanicien">Mécanicien</option>
-                            <option value="Peintre">Peintre</option>
-                            <option value="Jardinier">Jardinier</option>
-                            <option value="Nettoyage">Nettoyage</option>
-                            <option value="Informatique">Informatique</option>
-                            <option value="Autre">Autre</option>
+                            <option value="Santé & médical">Santé & médical</option>
+                            <option value="Beauté & Bien-être">Beauté & Bien-être</option>
+                            <option value="Services professionnels">Services professionnels</option>
+                            <option value="Services techniques">Services techniques</option>
                           </select>
                         </div>
                         <div className="sm:col-span-2">

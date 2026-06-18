@@ -52,7 +52,17 @@ const TopBar: React.FC<TopBarProps> = ({
     '/Avis': 'Mes Avis',
     '/Messages': 'Mes Messages',
   };
-  const pageTitle = pageTitles[location.pathname] ?? `Bonjour ${firstName}`;
+  
+  let pageTitle = pageTitles[location.pathname];
+  if (!pageTitle) {
+    if (location.pathname.startsWith('/Service-Provider-Profile/')) {
+      pageTitle = 'Prestataire Profile';
+    } else if (location.pathname.startsWith('/service/') && location.pathname.endsWith('/book')) {
+      pageTitle = 'Réservation';
+    } else {
+      pageTitle = `Bonjour ${firstName}`;
+    }
+  }
 
   const [openNotif, setOpenNotif] = useState(false);
   const [openAvatar, setOpenAvatar] = useState(false);
