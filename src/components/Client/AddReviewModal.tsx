@@ -10,7 +10,7 @@ interface AddReviewModalProps {
   onClose: () => void;
   onSuccess: () => void;
   prestataireId: number;
-  rendezVousId: number;
+  rendezVousId?: number | null;
   prestataireName: string;
 }
 
@@ -39,7 +39,7 @@ const AddReviewModal: React.FC<AddReviewModalProps> = ({ isOpen, onClose, onSucc
         if (clientId) {
           await createAvis({
             idPrestataire: prestataireId,
-            idRendezVous: rendezVousId,
+            idRendezVous: rendezVousId || undefined,
             note: rating,
             commentaire: comment,
           });

@@ -12,6 +12,7 @@ import {
 import { createRendezVous, acceptAlternativeDate } from "../../services/Client/rendezVousService";
 import toast from 'react-hot-toast';
 import api from "../../services/api";
+import { useTheme } from "../../context/ThemeContext";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -27,6 +28,11 @@ interface BookingModalProps {
 
 const TIME_SLOTS = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
 
+const toLocalISOString = (date: Date) => {
+  const pad = (n: number) => (n < 10 ? "0" + n : n);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+
 const BookingModal: React.FC<BookingModalProps> = ({
   isOpen,
   onClose,
@@ -38,6 +44,9 @@ const BookingModal: React.FC<BookingModalProps> = ({
   initialSelectedServiceId = null,
   initialSelectedLieu = null,
 }) => {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
   const [currentStep, setCurrentStep] = useState(0);
   const [animDir, setAnimDir] = useState<"left" | "right">("right");
   const [visible, setVisible] = useState(false);
@@ -127,6 +136,12 @@ const BookingModal: React.FC<BookingModalProps> = ({
       setTimeout(() => setVisible(true), 10);
       setCurrentStep(mode === "reschedule" && initialSelectedServiceId ? 1 : 0);
       setSelectedSlot(initialSlot || null);
+      if (initialSlot) {
+        const [datePart] = initialSlot.split(" ");
+        setActiveDate(datePart);
+      } else {
+        setActiveDate(null);
+      }
       setSlotError(null);
       setDescription("");
       if (initialSelectedServiceId) {
@@ -197,15 +212,15 @@ const BookingModal: React.FC<BookingModalProps> = ({
       if (mode === "reschedule" && rescheduleRdvId) {
         await acceptAlternativeDate(
           rescheduleRdvId,
-          targetDate.toISOString(),
-          endDate.toISOString()
+          toLocalISOString(targetDate),
+          toLocalISOString(endDate)
         );
       } else {
         await createRendezVous({
           idPres: Number(provider.id),
           idServ: selectedServiceId,
-          DateDebut: targetDate.toISOString(),
-          DateFin: endDate.toISOString(),
+          DateDebut: toLocalISOString(targetDate),
+          DateFin: toLocalISOString(endDate),
           Lieu: selectedLieu,
         });
       }
@@ -360,12 +375,14 @@ const BookingModal: React.FC<BookingModalProps> = ({
           className="aide-modal"
           onClick={(e) => e.stopPropagation()}
           style={{
-            background: "#fff",
+            background: isDark ? "#1A1D24" : "#fff",
             borderRadius: 22,
             width: "100%",
             maxWidth: 520,
-            boxShadow:
-              "0 25px 60px rgba(0,0,0,0.4), 0 0 40px rgba(0, 89, 178, 0.2)",
+            boxShadow: isDark
+              ? "0 25px 60px rgba(0,0,0,0.65), 0 0 40px rgba(0, 89, 178, 0.15)"
+              : "0 25px 60px rgba(0,0,0,0.4), 0 0 40px rgba(0, 89, 178, 0.2)",
+            border: isDark ? "1px solid rgba(255,255,255,0.08)" : "none",
             overflow: "hidden",
             position: "relative",
           }}
@@ -481,7 +498,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                   style={{
                     fontSize: 20,
                     fontWeight: 800,
-                    color: "#111827",
+                    color: isDark ? "#fff" : "#111827",
                     marginBottom: 8,
                   }}
                 >
@@ -490,7 +507,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                 <div
                   style={{
                     fontSize: 14,
-                    color: "#6b7280",
+                    color: isDark ? "#9ca3af" : "#6b7280",
                     marginBottom: 24,
                     lineHeight: 1.6,
                   }}
@@ -505,8 +522,8 @@ const BookingModal: React.FC<BookingModalProps> = ({
                     width: "100%",
                     padding: "14px",
                     borderRadius: 12,
-                    background: "#f3f4f6",
-                    color: "#374151",
+                    background: isDark ? "rgba(255,255,255,0.08)" : "#f3f4f6",
+                    color: isDark ? "#fff" : "#374151",
                     fontSize: 14,
                     fontWeight: 700,
                     border: "none",
@@ -514,10 +531,10 @@ const BookingModal: React.FC<BookingModalProps> = ({
                     transition: "all 0.2s",
                   }}
                   onMouseEnter={(e) =>
-                    (e.currentTarget.style.background = "#e5e7eb")
+                    (e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.15)" : "#e5e7eb")
                   }
                   onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = "#f3f4f6")
+                    (e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.08)" : "#f3f4f6")
                   }
                 >
                   Fermer
@@ -569,7 +586,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                       style={{
                         fontSize: 17,
                         fontWeight: 700,
-                        color: "#111827",
+                        color: isDark ? "#fff" : "#111827",
                       }}
                     >
                       {stepsMeta[currentStep].title}
@@ -591,7 +608,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                         style={{
                           fontSize: 13,
                           fontWeight: 700,
-                          color: "#374151",
+                          color: isDark ? "#e2e8f0" : "#374151",
                           marginBottom: 10,
                         }}
                       >
@@ -608,19 +625,19 @@ const BookingModal: React.FC<BookingModalProps> = ({
                           .filter((s: any) => !initialSlot || !isServiceFullDay(s))
                           .map((s: any) => (
                             <div
-                              key={s.id}
-                              onClick={() => setSelectedServiceId(s.id)}
-                              style={{
-                                padding: "14px",
-                                borderRadius: 14,
-                                cursor: "pointer",
-                                transition: "all 0.2s",
-                                border: `2px solid ${selectedServiceId === s.id ? "#0059B2" : "#f3f4f6"}`,
-                                background:
-                                  selectedServiceId === s.id
-                                    ? "rgba(0,89,178,0.04)"
-                                    : "#fff",
-                              }}
+                               key={s.id}
+                               onClick={() => setSelectedServiceId(s.id)}
+                               style={{
+                                 padding: "14px",
+                                 borderRadius: 14,
+                                 cursor: "pointer",
+                                 transition: "all 0.2s",
+                                 border: `2px solid ${selectedServiceId === s.id ? "#0059B2" : (isDark ? "rgba(255,255,255,0.08)" : "#f3f4f6")}`,
+                                 background:
+                                   selectedServiceId === s.id
+                                     ? (isDark ? "rgba(0,89,178,0.12)" : "rgba(0,89,178,0.04)")
+                                     : (isDark ? "#111318" : "#fff"),
+                               }}
                             >
                               <div
                                 style={{
@@ -635,8 +652,8 @@ const BookingModal: React.FC<BookingModalProps> = ({
                                     fontSize: 14,
                                     color:
                                       selectedServiceId === s.id
-                                        ? "#0059B2"
-                                        : "#374151",
+                                        ? (isDark ? "#60a5fa" : "#0059B2")
+                                        : (isDark ? "#e2e8f0" : "#374151"),
                                   }}
                                 >
                                   {s.nom || s.name}
@@ -645,7 +662,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                                   style={{
                                     fontWeight: 800,
                                     fontSize: 14,
-                                    color: "#111827",
+                                    color: isDark ? "#fff" : "#111827",
                                   }}
                                 >
                                   {s.prix} MAD
@@ -662,7 +679,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                           style={{
                             fontSize: 13,
                             fontWeight: 700,
-                            color: "#374151",
+                            color: isDark ? "#e2e8f0" : "#374151",
                             marginBottom: 10,
                           }}
                         >
@@ -677,15 +694,15 @@ const BookingModal: React.FC<BookingModalProps> = ({
                               borderRadius: 12,
                               cursor: "pointer",
                               transition: "all 0.2s",
-                              border: `2px solid ${selectedLieu === "En Local" ? "#0059B2" : "#f3f4f6"}`,
+                              border: `2px solid ${selectedLieu === "En Local" ? "#0059B2" : (isDark ? "rgba(255,255,255,0.08)" : "#f3f4f6")}`,
                               background:
                                 selectedLieu === "En Local"
-                                  ? "rgba(0,89,178,0.04)"
-                                  : "#fff",
+                                  ? (isDark ? "rgba(0,89,178,0.12)" : "rgba(0,89,178,0.04)")
+                                  : (isDark ? "#111318" : "#fff"),
                               color:
                                 selectedLieu === "En Local"
-                                  ? "#0059B2"
-                                  : "#374151",
+                                  ? (isDark ? "#60a5fa" : "#0059B2")
+                                  : (isDark ? "#9ca3af" : "#374151"),
                               fontWeight: 700,
                               fontSize: 13,
                             }}
@@ -700,15 +717,15 @@ const BookingModal: React.FC<BookingModalProps> = ({
                               borderRadius: 12,
                               cursor: "pointer",
                               transition: "all 0.2s",
-                              border: `2px solid ${selectedLieu === "À Domicile" ? "#7c3aed" : "#f3f4f6"}`,
+                              border: `2px solid ${selectedLieu === "À Domicile" ? "#7c3aed" : (isDark ? "rgba(255,255,255,0.08)" : "#f3f4f6")}`,
                               background:
                                 selectedLieu === "À Domicile"
-                                  ? "rgba(124,58,237,0.04)"
-                                  : "#fff",
+                                  ? (isDark ? "rgba(124,58,237,0.12)" : "rgba(124,58,237,0.04)")
+                                  : (isDark ? "#111318" : "#fff"),
                               color:
                                 selectedLieu === "À Domicile"
-                                  ? "#7c3aed"
-                                  : "#374151",
+                                  ? (isDark ? "#c084fc" : "#7c3aed")
+                                  : (isDark ? "#9ca3af" : "#374151"),
                               fontWeight: 700,
                               fontSize: 13,
                             }}
@@ -739,10 +756,10 @@ const BookingModal: React.FC<BookingModalProps> = ({
                     return (
                       <div
                         style={{
-                          background: "rgba(8,145,178,0.03)",
+                          background: isDark ? "rgba(8,145,178,0.08)" : "rgba(8,145,178,0.03)",
                           borderRadius: 14,
                           padding: "16px",
-                          border: "1px solid rgba(8,145,178,0.1)",
+                          border: isDark ? "1px solid rgba(8,145,178,0.2)" : "1px solid rgba(8,145,178,0.1)",
                         }}
                       >
                         {isDaily ? (
@@ -751,7 +768,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                               style={{
                                 fontSize: 13,
                                 fontWeight: 700,
-                                color: "#374151",
+                                color: isDark ? "#e2e8f0" : "#374151",
                                 marginBottom: 12,
                                 textAlign: "center",
                               }}
@@ -784,14 +801,14 @@ const BookingModal: React.FC<BookingModalProps> = ({
                                         transition: "all 0.2s",
                                         background: isSelected
                                           ? "linear-gradient(135deg, #0059B2, #1A6FD1)"
-                                          : "#fff",
+                                          : (isDark ? "#111318" : "#fff"),
                                         color: isSelected ? "#fff" : "#0891b2",
                                         boxShadow: isSelected
                                           ? "0 4px 10px rgba(0,89,178,0.3)"
                                           : "0 1px 2px rgba(0,0,0,0.05)",
                                         border: isSelected
                                           ? "none"
-                                          : "1px solid rgba(8,145,178,0.2)",
+                                          : (isDark ? "1px solid rgba(8,145,178,0.3)" : "1px solid rgba(8,145,178,0.2)"),
                                         display: "flex",
                                         flexDirection: "column",
                                         alignItems: "center",
@@ -811,7 +828,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                               style={{
                                 fontSize: 13,
                                 fontWeight: 700,
-                                color: "#374151",
+                                color: isDark ? "#e2e8f0" : "#374151",
                                 marginBottom: 16,
                                 textAlign: "center",
                               }}
@@ -834,10 +851,10 @@ const BookingModal: React.FC<BookingModalProps> = ({
                                       borderRadius: 12,
                                       cursor: "pointer",
                                       transition: "all 0.2s",
-                                      background: isActive ? "linear-gradient(135deg, #0059B2, #1A6FD1)" : "#fff",
-                                      color: isActive ? "#fff" : "#374151",
+                                      background: isActive ? "linear-gradient(135deg, #0059B2, #1A6FD1)" : (isDark ? "#111318" : "#fff"),
+                                      color: isActive ? "#fff" : (isDark ? "#9ca3af" : "#374151"),
                                       boxShadow: isActive ? "0 4px 10px rgba(0,89,178,0.3)" : "0 1px 2px rgba(0,0,0,0.05)",
-                                      border: isActive ? "none" : "1px solid rgba(0,0,0,0.05)",
+                                      border: isActive ? "none" : (isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.05)"),
                                       display: "flex",
                                       flexDirection: "column",
                                       alignItems: "center",
@@ -850,7 +867,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                                 );
                               })}
                               {availableDays.length === 0 && (
-                                <div style={{ fontSize: 13, color: "#6b7280", textAlign: "center", width: "100%", padding: "10px 0" }}>
+                                <div style={{ fontSize: 13, color: isDark ? "#9ca3af" : "#6b7280", textAlign: "center", width: "100%", padding: "10px 0" }}>
                                   Aucun jour disponible
                                 </div>
                               )}
@@ -892,10 +909,10 @@ const BookingModal: React.FC<BookingModalProps> = ({
                                             fontWeight: 800,
                                             cursor: "pointer",
                                             transition: "all 0.2s",
-                                            background: isSelected ? "linear-gradient(135deg, #0059B2, #1A6FD1)" : "#fff",
+                                            background: isSelected ? "linear-gradient(135deg, #0059B2, #1A6FD1)" : (isDark ? "#111318" : "#fff"),
                                             color: isSelected ? "#fff" : "#0891b2",
                                             boxShadow: isSelected ? "0 4px 10px rgba(0,89,178,0.3)" : "0 1px 2px rgba(0,0,0,0.05)",
-                                            border: isSelected ? "none" : "1px solid rgba(8,145,178,0.2)",
+                                            border: isSelected ? "none" : (isDark ? "1px solid rgba(8,145,178,0.3)" : "1px solid rgba(8,145,178,0.2)"),
                                           }}
                                           onMouseEnter={(e) => {
                                             if (!isSelected) {
@@ -905,7 +922,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                                           }}
                                           onMouseLeave={(e) => {
                                             if (!isSelected) {
-                                              e.currentTarget.style.background = "#fff";
+                                              e.currentTarget.style.background = isDark ? "#111318" : "#fff";
                                               e.currentTarget.style.color = "#0891b2";
                                             }
                                           }}
@@ -952,17 +969,17 @@ const BookingModal: React.FC<BookingModalProps> = ({
                   >
                     <div
                       style={{
-                        background: "rgba(124,58,237,0.05)",
+                        background: isDark ? "rgba(124,58,237,0.12)" : "rgba(124,58,237,0.05)",
                         borderRadius: 14,
                         padding: "16px",
-                        border: "1px solid rgba(124,58,237,0.1)",
+                        border: isDark ? "1px solid rgba(124,58,237,0.25)" : "1px solid rgba(124,58,237,0.1)",
                       }}
                     >
                       <p
                         style={{
                           fontSize: 13,
                           fontWeight: 800,
-                          color: "#111827",
+                          color: isDark ? "#fff" : "#111827",
                           marginBottom: 10,
                         }}
                       >
@@ -977,14 +994,14 @@ const BookingModal: React.FC<BookingModalProps> = ({
                           borderBottom: "1px dashed rgba(124,58,237,0.2)",
                         }}
                       >
-                        <span style={{ fontSize: 13, color: "#6b7280" }}>
+                        <span style={{ fontSize: 13, color: isDark ? "#9ca3af" : "#6b7280" }}>
                           Service
                         </span>
                         <span
                           style={{
                             fontSize: 13,
                             fontWeight: 700,
-                            color: "#111827",
+                            color: isDark ? "#fff" : "#111827",
                           }}
                         >
                           {provider.services.find(
@@ -1001,14 +1018,14 @@ const BookingModal: React.FC<BookingModalProps> = ({
                           justifyContent: "space-between",
                         }}
                       >
-                        <span style={{ fontSize: 13, color: "#6b7280" }}>
+                        <span style={{ fontSize: 13, color: isDark ? "#9ca3af" : "#6b7280" }}>
                           Lieu
                         </span>
                         <span
                           style={{
                             fontSize: 13,
                             fontWeight: 700,
-                            color: "#111827",
+                            color: isDark ? "#fff" : "#111827",
                           }}
                         >
                           {selectedLieu === "À Domicile"
@@ -1025,7 +1042,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                           borderTop: "1px dashed rgba(124,58,237,0.2)",
                         }}
                       >
-                        <span style={{ fontSize: 13, color: "#6b7280" }}>
+                        <span style={{ fontSize: 13, color: isDark ? "#9ca3af" : "#6b7280" }}>
                           Créneau
                         </span>
                         <span
@@ -1046,7 +1063,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                           display: "block",
                           fontSize: 12,
                           fontWeight: 700,
-                          color: "#374151",
+                          color: isDark ? "#e2e8f0" : "#374151",
                           marginBottom: 8,
                         }}
                       >
@@ -1060,7 +1077,9 @@ const BookingModal: React.FC<BookingModalProps> = ({
                           width: "100%",
                           padding: "14px",
                           borderRadius: 12,
-                          border: "1.5px solid #e5e7eb",
+                          border: isDark ? "1.5px solid rgba(255,255,255,0.08)" : "1.5px solid #e5e7eb",
+                          background: isDark ? "#111318" : "#fff",
+                          color: isDark ? "#fff" : "#374151",
                           fontSize: 13,
                           fontFamily: "inherit",
                           resize: "none",
@@ -1072,7 +1091,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                           (e.currentTarget.style.borderColor = "#7c3aed")
                         }
                         onBlur={(e) =>
-                          (e.currentTarget.style.borderColor = "#e5e7eb")
+                          (e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.08)" : "#e5e7eb")
                         }
                       />
                     </div>
@@ -1090,8 +1109,8 @@ const BookingModal: React.FC<BookingModalProps> = ({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                borderTop: "1px solid #f3f4f6",
-                background: "#fafafa",
+                borderTop: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid #f3f4f6",
+                background: isDark ? "#111318" : "#fafafa",
               }}
             >
               <button
@@ -1103,9 +1122,9 @@ const BookingModal: React.FC<BookingModalProps> = ({
                   gap: 6,
                   padding: "10px 18px",
                   borderRadius: 12,
-                  border: "1.5px solid #e5e7eb",
-                  background: "#fff",
-                  color: currentStep === 0 ? "#d1d5db" : "#374151",
+                  border: isDark ? "1.5px solid rgba(255,255,255,0.08)" : "1.5px solid #e5e7eb",
+                  background: isDark ? "#1a1d24" : "#fff",
+                  color: currentStep === 0 ? (isDark ? "rgba(255,255,255,0.2)" : "#d1d5db") : (isDark ? "#e2e8f0" : "#374151"),
                   fontSize: 13,
                   fontWeight: 700,
                   cursor: currentStep === 0 ? "not-allowed" : "pointer",

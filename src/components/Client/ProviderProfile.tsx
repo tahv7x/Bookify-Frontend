@@ -16,10 +16,16 @@ import BookingModal from '../../components/Client/BookingModal';
 import Navbar from '../../components/Client/Navbar';
 import LocationPicker from '../../components/Provider/LocationPicker';
 import { getRendezVousById } from '../../services/Client/rendezVousService';
+import api from '../../services/api';
 
 
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const TIME_SLOTS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+
+const toLocalDateString = (date: Date) => {
+  const pad = (n: number) => (n < 10 ? "0" + n : n);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
 
 const buildDefaultGrid = () => {
   const grid = [];
@@ -37,7 +43,7 @@ const buildDefaultGrid = () => {
     grid.push({
       day: formattedDate,
       dbDay: dayNameFull,
-      date: d.toISOString().split('T')[0],
+      date: toLocalDateString(d),
       slots: TIME_SLOTS.map(time => ({ time, available: false }))
     });
   }
@@ -145,9 +151,9 @@ export default function ProviderProfile() {
           name: apiData.nom,
           business: apiData.nom,
           title: apiData.specialite,
-          rating: apiData.note || 4.8, 
-          reviews: 24, 
-          hired: 87, 
+          rating: apiData.note ?? 0, 
+          reviews: 0, 
+          hired: 0, 
           location: apiData.adresse || "Casablanca, Maroc",
           intro: apiData.bio || "Professionnel expérimenté offrant des services de haute qualité. Passionné par mon métier, je m'assure de toujours satisfaire mes clients en proposant un accompagnement sur mesure.",
           services: [...(apiData.services || [])].map((s: any) => ({ ...s, nom: s.name || s.nom })).sort((a: any, b: any) => (Number(a.prix) || 0) - (Number(b.prix) || 0)),
@@ -174,9 +180,13 @@ export default function ProviderProfile() {
         };
         setProvider(mappedProvider);
 
-        // Fetch Availability
+        // Fetch Availability & Occupied slots
         try {
-          const data = await getDisponibilites(Number(providerId));
+          const [data, occupied] = await Promise.all([
+            getDisponibilites(Number(providerId)),
+            api.get(`/RendezVous/prestataire/${providerId}/occupied`).then(res => res.data).catch(() => [])
+          ]);
+
           // Combine DB data with the default grid
           const grid = buildDefaultGrid();
           data.forEach((dayData: any) => {
@@ -202,6 +212,26 @@ export default function ProviderProfile() {
             });
           });
 
+          // Overlay accepted rendez-vous (occupied slots) to block them from availability grid
+          grid.forEach((gridDay) => {
+            gridDay.slots.forEach((slot) => {
+              if (slot.available) {
+                const slotStart = new Date(`${gridDay.date}T${slot.time}:00`);
+                const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000); // 1 hour slot
+
+                const isOccupied = occupied.some((occ: any) => {
+                  const occStart = new Date(occ.dateDebut);
+                  const occEnd = new Date(occ.dateFin || occStart.getTime() + 60 * 60 * 1000);
+                  return occStart < slotEnd && occEnd > slotStart;
+                });
+
+                if (isOccupied) {
+                  slot.available = false;
+                }
+              }
+            });
+          });
+
           setAvailabilityData(grid);
         } catch (e) {
           console.error("Could not fetch availability", e);
@@ -219,6 +249,13 @@ export default function ProviderProfile() {
             text: a.comment
           }));
           mappedProvider.reviews = avis.length;
+          // Calculate actual average from reviews
+          if (avis.length > 0) {
+            const avgRating = avis.reduce((sum: number, a: any) => sum + (a.rating || 0), 0) / avis.length;
+            mappedProvider.rating = Math.round(avgRating * 10) / 10;
+          }
+          // Re-set provider so React picks up the updated rating/reviews
+          setProvider({ ...mappedProvider });
         } catch (e) {
           console.error("Could not fetch reviews", e);
         }
@@ -550,7 +587,7 @@ export default function ProviderProfile() {
                           return slot.available ? (
                             <button
                               key={dayData.day}
-                              onClick={() => { setInitialSelectedSlot(`${dayData.day} ${slot.time}`); handleAuthAction(() => setIsBookingModalOpen(true)); }}
+                              onClick={() => { setInitialSelectedSlot(`${dayData.date} ${slot.time}`); handleAuthAction(() => setIsBookingModalOpen(true)); }}
                               title={`${dayData.day} à ${slot.time} — Disponible`}
                               className="h-9 rounded-lg text-[11px] font-bold transition-all duration-200 border bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 hover:bg-emerald-500 hover:text-white hover:border-transparent hover:scale-105 hover:shadow-md"
                             >

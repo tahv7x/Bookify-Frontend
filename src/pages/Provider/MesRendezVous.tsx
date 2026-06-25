@@ -32,6 +32,7 @@ interface Client {
 interface Service {
   nom: string;
   prix: number;
+  isFullDay?: boolean;
 }
 
 interface Appointment {
@@ -78,6 +79,16 @@ const CFG: Record<
     bg: "bg-gray-50 dark:bg-white/5",
     text: "text-gray-600 dark:text-gray-400",
   },
+};
+
+const toLocalISOString = (date: Date) => {
+  const pad = (n: number) => (n < 10 ? "0" + n : n);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+
+const toLocalDateString = (date: Date) => {
+  const pad = (n: number) => (n < 10 ? "0" + n : n);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 };
 
 const MesRendezVousP: React.FC = () => {
@@ -156,7 +167,7 @@ const MesRendezVousP: React.FC = () => {
     
     // Pré-remplir avec la date actuelle
     const d = new Date(appt.dateDebut);
-    setProposeDate(d.toISOString().split("T")[0]);
+    setProposeDate(toLocalDateString(d));
     setProposeTime(d.toTimeString().substring(0, 5));
     setProposeNote("");
     setProposeModal({ isOpen: true, apptId: id });
@@ -174,7 +185,9 @@ const MesRendezVousP: React.FC = () => {
 
     const startDate = new Date(appt.dateDebut);
     const endDate = new Date(appt.dateFin);
-    const isFullDay = startDate.getHours() === 0 && endDate.getHours() === 23;
+    const isFullDay = appt.service?.isFullDay || 
+                      (startDate.getHours() === 0 && endDate.getHours() === 23) ||
+                      (startDate.getHours() === 9 && endDate.getHours() === 8);
 
     let startParsed: Date;
     if (isFullDay) {
@@ -194,8 +207,8 @@ const MesRendezVousP: React.FC = () => {
       setIsProposing(true);
       await proposeAlternativeDate(
         proposeModal.apptId,
-        startParsed.toISOString(),
-        endParsed.toISOString(),
+        toLocalISOString(startParsed),
+        toLocalISOString(endParsed),
         proposeNote.trim() || undefined
       );
       toast.success("Nouvelle date proposée au client avec succès !");
@@ -233,7 +246,7 @@ const MesRendezVousP: React.FC = () => {
 
   const selectedAppt = appointments.find((a) => a.idRendezVous === selectedId); // <-- Modifié hna
 
-  const formatDateTime = (dateStr: string) => {
+  const formatDateTime = (dateStr: string, isFullDayService = false) => {
     const d = new Date(dateStr);
     return {
       date: d.toLocaleDateString("fr-FR", {
@@ -241,7 +254,7 @@ const MesRendezVousP: React.FC = () => {
         month: "long",
         year: "numeric",
       }),
-      time: d.toLocaleTimeString("fr-FR", {
+      time: isFullDayService ? "Journée entière" : d.toLocaleTimeString("fr-FR", {
         hour: "2-digit",
         minute: "2-digit",
       }),
@@ -453,8 +466,11 @@ const MesRendezVousP: React.FC = () => {
               ) : (
                 filtered.map((appt) => {
                   const cfg = CFG[appt.statut] || CFG.EN_ATTENTE;
-                  const isSelected = selectedId === appt.idRendezVous; // <-- Modifié hna
-                  const dt = formatDateTime(appt.dateDebut);
+                  const isSelected = selectedId === appt.idRendezVous;
+                  const isApptFullDay = appt.service?.isFullDay || 
+                                        (new Date(appt.dateDebut).getHours() === 0 && new Date(appt.dateFin).getHours() === 23) ||
+                                        (new Date(appt.dateDebut).getHours() === 9 && new Date(appt.dateFin).getHours() === 8);
+                  const dt = formatDateTime(appt.dateDebut, isApptFullDay);
 
                   return (
                     <div
@@ -571,8 +587,11 @@ const MesRendezVousP: React.FC = () => {
               </div>
             ) : (
               (() => {
+                const isApptFullDay = selectedAppt?.service?.isFullDay || 
+                                      (new Date(selectedAppt.dateDebut).getHours() === 0 && new Date(selectedAppt.dateFin).getHours() === 23) ||
+                                      (new Date(selectedAppt.dateDebut).getHours() === 9 && new Date(selectedAppt.dateFin).getHours() === 8);
+                const dt = formatDateTime(selectedAppt.dateDebut, isApptFullDay);
                 const cfg = CFG[selectedAppt.statut] || CFG.EN_ATTENTE;
-                const dt = formatDateTime(selectedAppt.dateDebut);
                 const isPending = selectedAppt?.statut === "EN_ATTENTE";
 
                 return (

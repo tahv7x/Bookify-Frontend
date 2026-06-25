@@ -19,12 +19,14 @@ import { motion, AnimatePresence, type Variants } from "framer-motion";
 
 export interface AdminTopBarProps {
   userName?: string;
+  userAvatar?: string | null;
   onMenuToggle?: () => void;
   isMobileMenuOpen?: boolean;
 }
 
 const AdminTopBar: React.FC<AdminTopBarProps> = ({
   userName = "Administrateur",
+  userAvatar = null,
   onMenuToggle,
   isMobileMenuOpen = false,
 }) => {
@@ -194,14 +196,22 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
               onClick={() => setOpenAvatar(!openAvatar)}
               className="flex items-center gap-2.5 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
             >
-              <div
-                className="w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-sm shadow-[0_4px_10px_rgba(0,0,0,0.1)] cursor-pointer flex-shrink-0 border-2 border-white dark:border-[#111318]"
-                style={{
-                  background: "linear-gradient(135deg,#0059B2,#1A6FD1)",
-                }}
-              >
-                {getInitials(userName)}
-              </div>
+              {userAvatar ? (
+                <img
+                  src={userAvatar}
+                  alt={userName}
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover border-2 border-white dark:border-[#111318]"
+                />
+              ) : (
+                <div
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-sm shadow-[0_4px_10px_rgba(0,0,0,0.1)] cursor-pointer flex-shrink-0 border-2 border-white dark:border-[#111318]"
+                  style={{
+                    background: "linear-gradient(135deg,#0059B2,#1A6FD1)",
+                  }}
+                >
+                  {getInitials(userName)}
+                </div>
+              )}
               <ChevronDown
                 size={16}
                 strokeWidth={3}
@@ -227,15 +237,23 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
                       : "0 8px 48px rgba(30,60,180,0.08), inset 0 1px 0 rgba(255,255,255,1)",
                   }}
                 >
-                  <div className="px-4 py-4 border-b border-gray-100/50 dark:border-white/5 flex items-center gap-3 mb-2">
-                    <div
-                      className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-base flex-shrink-0 shadow-sm"
-                      style={{
-                        background: "linear-gradient(135deg,#0059B2,#1A6FD1)",
-                      }}
-                    >
-                      {getInitials(userName)}
-                    </div>
+                   <div className="px-4 py-4 border-b border-gray-100/50 dark:border-white/5 flex items-center gap-3 mb-2">
+                    {userAvatar ? (
+                      <img
+                        src={userAvatar}
+                        alt={userName}
+                        className="w-12 h-12 rounded-full object-cover shadow-sm flex-shrink-0"
+                      />
+                    ) : (
+                      <div
+                        className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-base flex-shrink-0 shadow-sm"
+                        style={{
+                          background: "linear-gradient(135deg,#0059B2,#1A6FD1)",
+                        }}
+                      >
+                        {getInitials(userName)}
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-gray-900 dark:text-white truncate">
                         {userName}

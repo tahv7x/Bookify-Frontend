@@ -161,9 +161,10 @@ const ProviderOnboarding: React.FC = () => {
     }
   };
 
-  const submitAvatarAndGoToService = async () => {
+  const submitAvatarAndFinish = async () => {
     if (!avatarFile) {
       setStep(4);
+      setTimeout(() => navigate("/Dashboard-Provider"), 2500);
       return;
     }
     try {
@@ -176,6 +177,7 @@ const ProviderOnboarding: React.FC = () => {
         localStorage.setItem("user", JSON.stringify(user));
       }
       setStep(4);
+      setTimeout(() => navigate("/Dashboard-Provider"), 2500);
     } catch (err: any) {
       setError("Erreur lors du téléchargement de l'avatar.");
     } finally {
@@ -185,28 +187,6 @@ const ProviderOnboarding: React.FC = () => {
 
   const skipAvatar = () => {
     setStep(4);
-  };
-
-  const submitServiceAndFinish = async () => {
-    if (!serviceData.nom || serviceData.prix <= 0) {
-      setError("Veuillez renseigner le nom et un prix valide.");
-      return;
-    }
-    try {
-      setLoading(true);
-      setError("");
-      await addService(serviceData);
-      setStep(5); // Success Step
-      setTimeout(() => navigate("/Dashboard-Provider"), 2500);
-    } catch (err: any) {
-      setError("Erreur lors de la création du service.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const skipServiceAndFinish = () => {
-    setStep(5);
     setTimeout(() => navigate("/Dashboard-Provider"), 2500);
   };
 
@@ -244,7 +224,7 @@ const ProviderOnboarding: React.FC = () => {
         <header className="h-20 px-8 flex items-center justify-between border-b border-slate-200 dark:border-white/5 bg-white/50 dark:bg-white/5 backdrop-blur-md relative z-10">
           <img src={theme === "dark" ? logoDark : logoLight} alt="Bookify" className="h-8 md:h-10 w-auto" />
           <div className="flex items-center gap-2">
-            {[1, 2, 3, 4].map((i) => (
+            {[1, 2, 3].map((i) => (
               <div key={i} className={`h-2.5 rounded-full transition-all duration-500 ${step >= i ? 'w-10 bg-[#1A6FD1]' : 'w-2.5 bg-slate-300 dark:bg-slate-700'}`} />
             ))}
           </div>
@@ -475,11 +455,11 @@ const ProviderOnboarding: React.FC = () => {
                       <button onClick={skipAvatar} className="text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold px-4 py-2 transition-colors">
                         Passer
                       </button>
-                      <button onClick={submitAvatarAndGoToService} disabled={loading} className="group relative overflow-hidden text-white px-8 py-3.5 rounded-xl font-bold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 shadow-lg shadow-[#1A6FD1]/30 disabled:opacity-50 disabled:hover:translate-y-0">
+                      <button onClick={submitAvatarAndFinish} disabled={loading} className="group relative overflow-hidden text-white px-8 py-3.5 rounded-xl font-bold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 shadow-lg shadow-[#1A6FD1]/30 disabled:opacity-50 disabled:hover:translate-y-0">
                         <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 transition-opacity duration-300 opacity-100 group-hover:opacity-0" />
                         <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500 transition-opacity duration-300 opacity-0 group-hover:opacity-100" />
                         <span className="relative flex items-center justify-center gap-2 z-10">
-                          {loading ? "Chargement..." : "Suivant"} <ArrowRight size={18} className="transition-transform group-hover:translate-x-1 duration-300" />
+                          {loading ? "Chargement..." : "Terminer"} <CheckCircle2 size={18} />
                         </span>
                       </button>
                     </div>
@@ -490,82 +470,6 @@ const ProviderOnboarding: React.FC = () => {
               {step === 4 && (
                 <motion.div
                   key="step4"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <div className="text-center mb-8">
-                    <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">Votre premier service</h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-lg">Qu'allez-vous proposer à vos clients ?</p>
-                  </div>
-
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Nom du service</label>
-                      <input
-                        type="text"
-                        value={serviceData.nom}
-                        onChange={(e) => setServiceData({ ...serviceData, nom: e.target.value })}
-                        placeholder="ex: Consultation standard"
-                        className="w-full p-4 bg-slate-50 dark:bg-[#1a1d27] border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-[#1A6FD1]/50 focus:border-[#1A6FD1] outline-none"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Prix (MAD)</label>
-                        <input
-                          type="number"
-                          value={serviceData.prix}
-                          onChange={(e) => setServiceData({ ...serviceData, prix: parseFloat(e.target.value) })}
-                          className="w-full p-4 bg-slate-50 dark:bg-[#1a1d27] border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-[#1A6FD1]/50 focus:border-[#1A6FD1] outline-none"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Durée ({serviceData.uniteDuree})</label>
-                        <input
-                          type="number"
-                          value={serviceData.duree}
-                          onChange={(e) => setServiceData({ ...serviceData, duree: parseInt(e.target.value) })}
-                          className="w-full p-4 bg-slate-50 dark:bg-[#1a1d27] border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-[#1A6FD1]/50 focus:border-[#1A6FD1] outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                        Description courte
-                      </label>
-                      <textarea
-                        value={serviceData.description}
-                        onChange={(e) => setServiceData({ ...serviceData, description: e.target.value })}
-                        placeholder="Description du service..."
-                        className="w-full p-4 bg-slate-50 dark:bg-[#1a1d27] border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-[#1A6FD1]/50 focus:border-[#1A6FD1] outline-none h-24 resize-none"
-                      />
-                    </div>
-
-                    {error && <p className="text-red-500 text-sm font-medium text-center">{error}</p>}
-
-                    <div className="pt-4 flex items-center justify-between">
-                      <button onClick={skipServiceAndFinish} className="text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold px-4 py-2 transition-colors">
-                        Passer
-                      </button>
-                      <button onClick={submitServiceAndFinish} disabled={loading} className="group relative overflow-hidden text-white px-8 py-3.5 rounded-xl font-bold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 shadow-lg shadow-[#1A6FD1]/30 disabled:opacity-50 disabled:hover:translate-y-0">
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 transition-opacity duration-300 opacity-100 group-hover:opacity-0" />
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500 transition-opacity duration-300 opacity-0 group-hover:opacity-100" />
-                        <span className="relative flex items-center justify-center gap-2 z-10">
-                          {loading ? "Création..." : "Terminer"} <CheckCircle2 size={18} />
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {step === 5 && (
-                <motion.div
-                  key="step5"
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5, type: "spring" }}

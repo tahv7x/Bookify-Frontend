@@ -273,7 +273,7 @@ const Home: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-1 bg-amber-100 dark:bg-amber-500/20 px-2.5 py-1 rounded-lg">
                         <Star className="text-amber-500 fill-amber-500" size={14} />
-                        <span className="text-xs font-bold text-amber-700 dark:text-amber-400">{sp.rating ? sp.rating.toFixed(1) : 'N/A'}</span>
+                        <span className="text-xs font-bold text-amber-700 dark:text-amber-400">{sp.rating != null ? sp.rating.toFixed(1) : 'N/A'}</span>
                       </div>
                     </div>
 

@@ -724,15 +724,6 @@ const MesRendezVous: React.FC = () => {
                                   >
                                     <Star size={14} />Laisser un avis
                                   </button>
-                                  <a
-                                    href={generateGoogleCalendarUrl(appt)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={e => e.stopPropagation()}
-                                    className="flex items-center gap-1.5 px-4 py-2 bg-[#4285F4]/10 text-[#4285F4] rounded-xl text-xs font-bold hover:bg-[#4285F4] hover:text-white transition-all shadow-sm"
-                                  >
-                                    <CalendarPlus size={14} />Agenda
-                                  </a>
                                 </>
                               )}
 

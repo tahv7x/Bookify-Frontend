@@ -31,7 +31,7 @@ const TopBar: React.FC<TopBarProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
 
-  const firstName = userName.split(' ')[0];
+  const firstName = (userName || "").split(' ')[0];
   const pageTitles: Record<string, string> = {
     '/Home-Provider': `Acceuil`,
     '/Dashboard-Provider': 'Dashboard',

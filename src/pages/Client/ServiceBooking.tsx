@@ -13,6 +13,16 @@ import toast from 'react-hot-toast';
 
 const TIME_SLOTS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 
+const toLocalISOString = (date: Date) => {
+  const pad = (n: number) => (n < 10 ? "0" + n : n);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+
+const toLocalDateString = (date: Date) => {
+  const pad = (n: number) => (n < 10 ? "0" + n : n);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
 const buildDefaultGrid = () => {
   const grid = [];
   const today = new Date();
@@ -25,7 +35,7 @@ const buildDefaultGrid = () => {
     grid.push({
       day: `${shortDaysMap[d.getDay()]} ${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`,
       dbDay: daysMap[d.getDay()],
-      date: d.toISOString().split('T')[0],
+      date: toLocalDateString(d),
       slots: TIME_SLOTS.map(time => ({ time, available: false }))
     });
   }
@@ -51,6 +61,7 @@ const ServiceBooking: React.FC = () => {
   const [availabilityData, setAvailabilityData] = useState<any[]>([]);
   const [isBooking, setIsBooking] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const s = localStorage.getItem('user');
@@ -110,6 +121,32 @@ const ServiceBooking: React.FC = () => {
         // Filter out slots that overlap with accepted appointments
         const duree = service.duree || 1;
         const unite = (service.uniteDuree || 'HEURES').toUpperCase();
+
+        if (!isDaily) {
+          let durationInHours = 1;
+          if (unite.includes('MINUTE')) {
+            durationInHours = Math.ceil(duree / 60);
+          } else if (unite.includes('HEURE') || unite.includes('HOUR')) {
+            durationInHours = duree;
+          }
+
+          grid.forEach(gridDay => {
+            const baseAvailable = gridDay.slots.map(s => s.available);
+            gridDay.slots.forEach((slot, idx) => {
+              if (!slot.available) return;
+              let isFullyAvailable = true;
+              for (let k = 0; k < durationInHours; k++) {
+                if (idx + k >= gridDay.slots.length || !baseAvailable[idx + k]) {
+                  isFullyAvailable = false;
+                  break;
+                }
+              }
+              if (!isFullyAvailable) {
+                slot.available = false;
+              }
+            });
+          });
+        }
 
         grid.forEach(gridDay => {
           gridDay.slots.forEach(slot => {
@@ -178,8 +215,8 @@ const ServiceBooking: React.FC = () => {
       await api.post('/rendezvous', {
         idPres: service.prestataire.id,
         idServ: service.idService,
-        dateDebut: start.toISOString(),
-        dateFin: end.toISOString()
+        dateDebut: toLocalISOString(start),
+        dateFin: toLocalISOString(end)
       });
 
       // Show success, wait a sec, then redirect
@@ -380,7 +417,7 @@ const ServiceBooking: React.FC = () => {
                                   key={key}
                                   type="button"
                                   onClick={() => setSelectedSlot(isSelected ? null : key)}
-                                  className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-all ${isSelected ? 'bg-gradient-to-br from-[#004a96] to-[#1A6FD1] text-white shadow-md' : 'bg-white border border-gray-200 text-[#0891b2] hover:border-[#1A6FD1]'}`}
+                                  className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-all ${isSelected ? 'bg-gradient-to-br from-[#004a96] to-[#1A6FD1] text-white shadow-md border border-transparent scale-[1.02]' : 'bg-white/60 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-sky-700 dark:text-sky-400 hover:bg-white/80 dark:hover:bg-white/10 hover:border-[#1A6FD1] dark:hover:border-white/20'}`}
                                 >
                                   <span className="text-[10px] font-bold uppercase opacity-80">{d.day.split(' ')[0]}</span>
                                   <span className="text-sm font-black">{d.day.split(' ')[1]}</span>
@@ -402,7 +439,7 @@ const ServiceBooking: React.FC = () => {
                                   key={d.date}
                                   type="button"
                                   onClick={() => setActiveDate(d.date)}
-                                  className={`min-w-[64px] p-2 rounded-xl flex flex-col items-center gap-1 transition-all ${isActive ? 'bg-gradient-to-br from-[#004a96] to-[#1A6FD1] text-white shadow-md' : 'bg-white border border-gray-200 text-gray-700 hover:border-gray-300'}`}
+                                  className={`min-w-[64px] p-2 rounded-xl flex flex-col items-center gap-1 transition-all ${isActive ? 'bg-gradient-to-br from-[#004a96] to-[#1A6FD1] text-white shadow-md border border-transparent scale-[1.02]' : 'bg-white/60 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-white/10 hover:border-slate-300 dark:hover:border-white/20'}`}
                                 >
                                   <span className="text-[9px] font-bold uppercase opacity-80">{d.day.split(' ')[0]}</span>
                                   <span className="text-sm font-black">{d.day.split(' ')[1]}</span>
@@ -419,35 +456,78 @@ const ServiceBooking: React.FC = () => {
                             if (!activeDayData) return null;
 
                             return (
-                              <div className="grid grid-cols-4 gap-2">
-                                {activeDayData.slots.map((slot: any) => {
-                                  if (!slot.available) return null;
-                                  
-                                  // Hide past slots for hourly services
-                                  const isDailyService = Boolean(service?.isFullDay) || /jour/i.test(service?.uniteDuree || "");
-                                  if (!isDailyService && slot.time) {
-                                    const [hours, minutes] = slot.time.split(':').map(Number);
-                                    const slotDateTime = new Date(activeDayData.date);
-                                    slotDateTime.setHours(hours, minutes, 0, 0);
-                                    
-                                    if (slotDateTime < new Date()) return null;
-                                  }
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                  {activeDayData.slots.map((slot: any, idx: number) => {
+                                    // Hide past slots for hourly services
+                                    const isDailyService = Boolean(service?.isFullDay) || /jour/i.test(service?.uniteDuree || "");
+                                    let isPast = false;
+                                    if (!isDailyService && slot.time) {
+                                      const [hours, minutes] = slot.time.split(':').map(Number);
+                                      const slotDateTime = new Date(activeDayData.date);
+                                      slotDateTime.setHours(hours, minutes, 0, 0);
+                                      
+                                      if (slotDateTime < new Date()) {
+                                        isPast = true;
+                                      }
+                                    }
 
-                                  const key = `${activeDayData.date} ${slot.time}`;
-                                  const isSelected = selectedSlot === key;
-                                  return (
-                                    <button
-                                      key={key}
-                                      type="button"
-                                      onClick={() => setSelectedSlot(key)}
-                                      className={`p-2 rounded-lg text-xs font-bold transition-all ${isSelected ? 'bg-gradient-to-br from-[#004a96] to-[#1A6FD1] text-white shadow-md' : 'bg-white border border-gray-200 text-[#0891b2] hover:border-[#1A6FD1]'}`}
-                                    >
-                                      {slot.time}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            );
+                                    const dur = service.duree || 1;
+                                    const unit = (service.uniteDuree || 'HEURES').toUpperCase();
+                                    
+                                    let dureeInHours = 1;
+                                    if (unit.includes('MINUTE')) {
+                                      dureeInHours = Math.ceil(dur / 60);
+                                    } else if (unit.includes('HEURE') || unit.includes('HOUR')) {
+                                      dureeInHours = dur;
+                                    }
+
+                                    const isDisabled = !slot.available || isPast;
+
+                                    // Determine if this slot is part of the currently selected start slot range
+                                    let isHighlighted = false;
+                                    if (selectedSlot && selectedSlot.startsWith(activeDayData.date)) {
+                                      const selectedTime = selectedSlot.split(" ")[1];
+                                      const selectedIdx = activeDayData.slots.findIndex((s: any) => s.time === selectedTime);
+                                      if (selectedIdx !== -1 && idx >= selectedIdx && idx < selectedIdx + dureeInHours) {
+                                        isHighlighted = true;
+                                      }
+                                    }
+
+                                    // Determine if this slot is part of the currently hovered slot range
+                                    let isHovered = false;
+                                    if (hoveredIndex !== null && idx >= hoveredIndex && idx < hoveredIndex + dureeInHours) {
+                                      isHovered = true;
+                                    }
+
+                                    const key = `${activeDayData.date} ${slot.time}`;
+
+                                    let btnClasses = "p-3 rounded-xl text-sm font-bold transition-all border text-center ";
+                                    if (isDisabled) {
+                                      btnClasses += "bg-slate-100/10 dark:bg-white/[0.02] border-slate-200/10 dark:border-white/5 text-slate-400 dark:text-slate-600 opacity-30 cursor-not-allowed pointer-events-none";
+                                    } else if (isHighlighted) {
+                                      btnClasses += "bg-gradient-to-br from-[#004a96] to-[#1A6FD1] text-white border-transparent shadow-md scale-[1.02] shadow-blue-500/20";
+                                    } else if (isHovered) {
+                                      btnClasses += "bg-blue-500/15 dark:bg-blue-500/25 border-[#1A6FD1] dark:border-blue-500 text-[#1A6FD1] dark:text-blue-300 scale-[1.02]";
+                                    } else {
+                                      btnClasses += "bg-white/60 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-sky-700 dark:text-sky-400 hover:bg-white/80 dark:hover:bg-white/10 hover:border-[#1A6FD1] dark:hover:border-white/20";
+                                    }
+
+                                    return (
+                                      <button
+                                        key={key}
+                                        type="button"
+                                        disabled={isDisabled}
+                                        onClick={() => setSelectedSlot(key)}
+                                        onMouseEnter={() => !isDisabled && setHoveredIndex(idx)}
+                                        onMouseLeave={() => setHoveredIndex(null)}
+                                        className={btnClasses}
+                                      >
+                                        {slot.time}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              );
                           })()}
                         </div>
                       );

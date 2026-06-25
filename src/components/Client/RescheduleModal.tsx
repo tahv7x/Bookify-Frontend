@@ -14,24 +14,36 @@ interface RescheduleModalProps {
 
 const DAYS_MAP = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 
+const toLocalISOString = (date: Date) => {
+  const pad = (n: number) => (n < 10 ? "0" + n : n);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+
+const toLocalDateString = (date: Date) => {
+  const pad = (n: number) => (n < 10 ? "0" + n : n);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
 export default function RescheduleModal({ isOpen, onClose, appointment, onSuccess }: RescheduleModalProps) {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [loading, setLoading] = useState(false);
   const [dispoData, setDispoData] = useState<any[]>([]);
   const [fetchingDispo, setFetchingDispo] = useState(false);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen && appointment) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
-      setDate(tomorrow.toISOString().split('T')[0]);
+      setDate(toLocalDateString(tomorrow));
       setTime('');
       
       const fetchDispo = async () => {
         setFetchingDispo(true);
         try {
-          const res = await api.get(`/Disponibilites/${appointment.idPres}`);
+          const providerId = appointment.prestataireId || appointment.idPres;
+          const res = await api.get(`/Disponibilites/${providerId}`);
           setDispoData(res.data);
         } catch(e) {
           console.error("Error fetching disponibilites", e);
@@ -45,9 +57,46 @@ export default function RescheduleModal({ isOpen, onClose, appointment, onSucces
   }, [isOpen, appointment]);
 
   // Compute available times based on selected date
-  const selectedDayStr = date ? DAYS_MAP[new Date(date).getDay()] : '';
-  const daySlots = dispoData.find(d => d.day === selectedDayStr)?.slots || [];
-  const availableTimes = daySlots.filter((s:any) => s.available).map((s:any) => s.time);
+  const getDayOfWeek = (dateStr: string) => {
+    if (!dateStr) return '';
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const d = new Date(year, month - 1, day);
+    return DAYS_MAP[d.getDay()];
+  };
+
+  const selectedDayStr = getDayOfWeek(date);
+  const dayData = dispoData.find(d => d?.day?.toLowerCase() === selectedDayStr.toLowerCase());
+  const daySlots = dayData?.slots || [];
+
+  const TIME_SLOTS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+
+  const durationMs = appointment.dateFin 
+    ? new Date(appointment.dateFin).getTime() - new Date(appointment.rawDate).getTime() 
+    : 60 * 60 * 1000;
+  const dureeInHours = Math.ceil(durationMs / (60 * 60 * 1000));
+
+  const hasFullDay = daySlots.some((s: any) => s.time === null || s.time === '00:00' || s.time === '');
+  const fullDaySlot = daySlots.find((s: any) => s.time === null || s.time === '00:00' || s.time === '');
+  const isFullDayAvailable = fullDaySlot ? fullDaySlot.available : true;
+
+  const baseSlotsAvailability = TIME_SLOTS.map(t => {
+    if (hasFullDay) {
+      return isFullDayAvailable;
+    }
+    const dbSlot = daySlots.find((s: any) => s.time === t);
+    return dbSlot ? dbSlot.available : false;
+  });
+
+  const isSlotFullyAvailable = (idx: number) => {
+    for (let k = 0; k < dureeInHours; k++) {
+      if (idx + k >= TIME_SLOTS.length || !baseSlotsAvailability[idx + k]) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const availableTimes = TIME_SLOTS.filter((t, idx) => isSlotFullyAvailable(idx));
 
   // Auto-select first available time when date changes
   useEffect(() => {
@@ -77,13 +126,15 @@ export default function RescheduleModal({ isOpen, onClose, appointment, onSucces
         return;
       }
 
-      const endDate = new Date(targetDate);
-      endDate.setHours(targetDate.getHours() + 1);
+      const durationMs = appointment.dateFin 
+        ? new Date(appointment.dateFin).getTime() - new Date(appointment.rawDate).getTime() 
+        : 60 * 60 * 1000;
+      const endDate = new Date(targetDate.getTime() + durationMs);
 
       await rescheduleAppointment(
         appointment.id,
-        targetDate.toISOString(),
-        endDate.toISOString()
+        toLocalISOString(targetDate),
+        toLocalISOString(endDate)
       );
 
       const formattedDate = targetDate.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }).replace('.', '');
@@ -98,7 +149,7 @@ export default function RescheduleModal({ isOpen, onClose, appointment, onSucces
     }
   };
 
-  const minDate = new Date().toISOString().split('T')[0];
+  const minDate = toLocalDateString(new Date());
 
   return (
     <AnimatePresence>
@@ -149,7 +200,7 @@ export default function RescheduleModal({ isOpen, onClose, appointment, onSucces
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                 <Clock size={16} className="text-[#1A6FD1]" /> Nouvelle heure
               </label>
               {fetchingDispo ? (
@@ -157,16 +208,55 @@ export default function RescheduleModal({ isOpen, onClose, appointment, onSucces
                   Chargement des disponibilités...
                 </div>
               ) : availableTimes.length > 0 ? (
-                <select
-                  required
-                  value={time}
-                  onChange={e => setTime(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-[#0B0F19] border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#1A6FD1] outline-none transition-all"
-                >
-                  {availableTimes.map((t: string) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
+                  {TIME_SLOTS.map((t: string, idx: number) => {
+                    const [hours, minutes] = t.split(':').map(Number);
+                    const slotDateTime = new Date(date);
+                    slotDateTime.setHours(hours, minutes, 0, 0);
+                    const isPast = slotDateTime < new Date();
+                    const isDisabled = !isSlotFullyAvailable(idx) || isPast;
+
+                    // Determine if this slot is part of the currently selected start slot range
+                    let isHighlighted = false;
+                    if (time) {
+                      const selectedIdx = TIME_SLOTS.indexOf(time);
+                      if (selectedIdx !== -1 && idx >= selectedIdx && idx < selectedIdx + dureeInHours) {
+                        isHighlighted = true;
+                      }
+                    }
+
+                    // Determine if this slot is part of the currently hovered slot range
+                    let isHovered = false;
+                    if (hoveredIndex !== null && idx >= hoveredIndex && idx < hoveredIndex + dureeInHours) {
+                      isHovered = true;
+                    }
+
+                    let btnClasses = "py-2 px-3 rounded-xl text-xs font-bold transition-all border text-center ";
+                    if (isDisabled) {
+                      btnClasses += "bg-slate-100/10 dark:bg-white/[0.02] border-slate-200/10 dark:border-white/5 text-slate-400 dark:text-slate-600 opacity-30 cursor-not-allowed pointer-events-none";
+                    } else if (isHighlighted) {
+                      btnClasses += "bg-gradient-to-br from-[#004a96] to-[#1A6FD1] text-white border-transparent shadow-md scale-[1.02] shadow-blue-500/20";
+                    } else if (isHovered) {
+                      btnClasses += "bg-blue-500/15 dark:bg-blue-500/25 border-[#1A6FD1] dark:border-blue-500 text-[#1A6FD1] dark:text-blue-300 scale-[1.02]";
+                    } else {
+                      btnClasses += "bg-white/60 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-sky-700 dark:text-sky-400 hover:bg-white/80 dark:hover:bg-white/10 hover:border-[#1A6FD1] dark:hover:border-white/20";
+                    }
+
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        disabled={isDisabled}
+                        onClick={() => setTime(t)}
+                        onMouseEnter={() => !isDisabled && setHoveredIndex(idx)}
+                        onMouseLeave={() => setHoveredIndex(null)}
+                        className={btnClasses}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
+                </div>
               ) : (
                 <div className="flex items-center gap-2 w-full bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl px-4 py-3 text-red-600 dark:text-red-400 text-sm">
                   <AlertCircle size={16} /> Aucun créneau disponible ce jour-là.

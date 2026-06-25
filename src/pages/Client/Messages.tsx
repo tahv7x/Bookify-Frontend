@@ -20,6 +20,7 @@ import MobileBottomNav from "../../components/Client/MobileBottomNav";
 import ProviderNavbar from "../../components/Provider/Navbar";
 import ProviderTopBar from "../../components/Provider/TopBar";
 import { useTheme } from "../../context/ThemeContext";
+import AddReviewModal from "../../components/Client/AddReviewModal";
 import {
   getContacts,
   getConversation,
@@ -35,6 +36,8 @@ const Messages: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userName, setUserName] = useState("");
   const [role, setRole] = useState<"CLIENT" | "PRESTATAIRE">("CLIENT");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -758,17 +761,49 @@ const Messages: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  <button
-                    className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
-                    style={{
-                      color: isDark ? "rgba(255,255,255,0.38)" : "#94a3b8",
-                      background: isDark
-                        ? "rgba(255,255,255,0.05)"
-                        : "rgba(26,111,209,0.05)",
-                    }}
-                  >
-                    <MoreVertical size={17} />
-                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsMenuOpen(!isMenuOpen)}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+                      style={{
+                        color: isDark ? "rgba(255,255,255,0.38)" : "#94a3b8",
+                        background: isDark
+                          ? "rgba(255,255,255,0.05)"
+                          : "rgba(26,111,209,0.05)",
+                      }}
+                    >
+                      <MoreVertical size={17} />
+                    </button>
+                    {isMenuOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
+                        <div className={`absolute right-0 mt-2 w-48 rounded-2xl shadow-xl border z-50 p-1.5 transition-all ${isDark ? 'bg-[#1a1d27] border-white/10 text-white' : 'bg-white border-gray-100 text-gray-800'}`}>
+                          {activeContact.specialty !== "Administration" && activeContact.specialty !== "Client" && activeContact.providerId && (
+                            <button
+                              onClick={() => {
+                                setIsMenuOpen(false);
+                                navigate(`/Service-Provider-Profile/${activeContact.providerId}`);
+                              }}
+                              className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold transition-all ${isDark ? 'hover:bg-white/5 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}
+                            >
+                              Accéder au profil
+                            </button>
+                          )}
+                          {role === "CLIENT" && activeContact.specialty !== "Administration" && activeContact.specialty !== "Client" && activeContact.providerId && (
+                            <button
+                              onClick={() => {
+                                setIsMenuOpen(false);
+                                setIsReviewOpen(true);
+                              }}
+                              className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold transition-all ${isDark ? 'hover:bg-white/5 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}
+                            >
+                              Donner un avis
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Messages */}
@@ -885,60 +920,84 @@ const Messages: React.FC = () => {
                               <div
                                 className={`px-4 py-2.5 text-sm leading-relaxed ${isMe ? `bm${msg.pending ? " bm-pending" : msg.failed ? " bm-failed" : ""}` : "bo"}`}
                               >
-                                {msg.proposal ? (
-                                  <div className="space-y-2">
-                                    <div className="font-semibold">
-                                      {msg.proposal.isAuto ? "Décalage automatique du rendez-vous" : "Proposition de nouvelle date"}
-                                    </div>
-                                    <div className="text-xs opacity-80">
-                                      Du {new Date(msg.proposal.startIso).toLocaleString("fr-FR", { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ' à')}
-                                      <br/>
-                                      Au {new Date(msg.proposal.endIso).toLocaleString("fr-FR", { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ' à')}
-                                    </div>
-                                    {msg.proposal.note && (
-                                      <div className={`text-xs opacity-90 border-t ${isDark ? 'border-white/20' : 'border-slate-300'} pt-1 mt-1`}>
-                                        {msg.proposal.note}
-                                      </div>
-                                    )}
-                                    {!isMe && (
-                                      <div className="flex flex-col gap-2 mt-2">
-                                        <button
-                                          type="button"
-                                          disabled={
-                                            acceptingProposalId ===
-                                            msg.proposal.rdvId
-                                          }
-                                          onClick={() =>
-                                            handleAcceptProposal(
-                                              msg.proposal.rdvId,
-                                              msg.proposal.startIso,
-                                              msg.proposal.endIso,
-                                            )
-                                          }
-                                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold disabled:opacity-60 transition-colors w-full"
-                                        >
-                                          {acceptingProposalId ===
-                                          msg.proposal.rdvId
-                                            ? "Validation..."
-                                            : "Accepter la nouvelle date"}
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            navigate(`/Service-Provider-Profile/${activeContact.providerId}?rescheduleRdvId=${msg.proposal.rdvId}`)
-                                          }
-                                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors w-full ${
-                                            isDark 
-                                              ? 'bg-white/10 hover:bg-white/20 text-white' 
-                                              : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
-                                          }`}
-                                        >
-                                          Choisir une autre heure
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : msg.isProposalAccepted ? (
+                                {msg.proposal ? (() => {
+                                   const start = new Date(msg.proposal.startIso);
+                                   const end = new Date(msg.proposal.endIso);
+                                   const isFullDay = (start.getHours() === 0 && end.getHours() === 23) ||
+                                                     (start.getHours() === 9 && end.getHours() === 8);
+
+                                   const formatDateStr = (date: Date) => date.toLocaleDateString("fr-FR", { day: '2-digit', month: '2-digit', year: 'numeric' });
+                                   const formatDateTimeStr = (date: Date) => date.toLocaleString("fr-FR", { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ' à');
+
+                                   return (
+                                     <div className="space-y-2">
+                                       <div className="font-semibold">
+                                         {msg.proposal.isAuto ? "Décalage automatique du rendez-vous" : "Proposition de nouvelle date"}
+                                       </div>
+                                       <div className="text-xs opacity-80">
+                                         {isFullDay ? (
+                                           start.toDateString() === end.toDateString() || Math.abs(end.getTime() - start.getTime()) <= 24 * 60 * 60 * 1000 + 10000 ? (
+                                             <>Le {formatDateStr(start)} (Journée entière)</>
+                                           ) : (
+                                             <>
+                                               Du {formatDateStr(start)}
+                                               <br/>
+                                               Au {formatDateStr(end)} (Journée entière)
+                                             </>
+                                           )
+                                         ) : (
+                                           <>
+                                             Du {formatDateTimeStr(start)}
+                                             <br/>
+                                             Au {formatDateTimeStr(end)}
+                                           </>
+                                         )}
+                                       </div>
+                                       {msg.proposal.note && (
+                                         <div className={`text-xs opacity-90 border-t ${isDark ? 'border-white/20' : 'border-slate-300'} pt-1 mt-1`}>
+                                           {msg.proposal.note}
+                                         </div>
+                                       )}
+                                       {!isMe && (
+                                         <div className="flex flex-col gap-2 mt-2">
+                                           <button
+                                             type="button"
+                                             disabled={
+                                               acceptingProposalId ===
+                                               msg.proposal.rdvId
+                                             }
+                                             onClick={() =>
+                                               handleAcceptProposal(
+                                                 msg.proposal.rdvId,
+                                                 msg.proposal.startIso,
+                                                 msg.proposal.endIso,
+                                               )
+                                             }
+                                             className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold disabled:opacity-60 transition-colors w-full"
+                                           >
+                                             {acceptingProposalId ===
+                                             msg.proposal.rdvId
+                                               ? "Validation..."
+                                               : "Accepter la nouvelle date"}
+                                           </button>
+                                           <button
+                                             type="button"
+                                             onClick={() =>
+                                               navigate(`/Service-Provider-Profile/${activeContact.providerId}?rescheduleRdvId=${msg.proposal.rdvId}`)
+                                             }
+                                             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors w-full ${
+                                               isDark 
+                                                 ? 'bg-white/10 hover:bg-white/20 text-white' 
+                                                 : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
+                                             }`}
+                                           >
+                                             Choisir une autre heure
+                                           </button>
+                                         </div>
+                                       )}
+                                     </div>
+                                   );
+                                 })() : msg.isProposalAccepted ? (
                                   <div className="text-xs font-semibold">
                                     ✅ Nouvelle date acceptée
                                   </div>
@@ -1065,6 +1124,17 @@ const Messages: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {isReviewOpen && activeContact && activeContact.providerId && (
+        <AddReviewModal
+          isOpen={isReviewOpen}
+          onClose={() => setIsReviewOpen(false)}
+          onSuccess={() => {}}
+          prestataireId={activeContact.providerId}
+          rendezVousId={null}
+          prestataireName={activeContact.name}
+        />
+      )}
 
       <MobileBottomNav />
     </div>

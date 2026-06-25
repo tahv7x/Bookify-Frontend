@@ -93,8 +93,9 @@ const Home: React.FC = () => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
       const u = JSON.parse(userStr);
-      setUserName(u.nomComplet || u.nom || 'Prestataire');
-      setFirstName(u.nom.split(' ')[0] || u.nomComplet.split(' ')[0]);
+      const name = u.nomComplet || u.nom || 'Prestataire';
+      setUserName(name);
+      setFirstName(name.split(' ')[0]);
     }
     fetchProviderData();
     fetchNotifications();

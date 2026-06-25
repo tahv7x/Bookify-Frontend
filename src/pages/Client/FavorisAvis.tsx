@@ -481,6 +481,11 @@ const FavorisAvis: React.FC = () => {
     if (!bookingProfessional || !selectedService || !selectedDate) return;
     if (!isSelectedServiceFullDay && !selectedTimeSlot) return;
 
+    const toLocalISOString = (date: Date) => {
+      const pad = (n: number) => (n < 10 ? "0" + n : n);
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    };
+
     try {
       const { createRendezVous } =
         await import("../../services/Client/rendezVousService");
@@ -503,8 +508,8 @@ const FavorisAvis: React.FC = () => {
       await createRendezVous({
         idPres: Number(bookingProfessional.id),
         idServ: Number(selectedService),
-        DateDebut: targetDate.toISOString(),
-        DateFin: endDate.toISOString(),
+        DateDebut: toLocalISOString(targetDate),
+        DateFin: toLocalISOString(endDate),
         Lieu: "",
       });
 

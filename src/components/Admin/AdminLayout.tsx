@@ -44,6 +44,17 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     return "Administrateur";
   });
 
+  const [userAvatar] = useState<string | null>(() => {
+    try {
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        return u.avatar || null;
+      }
+    } catch { /* ignore */ }
+    return null;
+  });
+
   return (
     <div
       className={`relative min-h-screen font-sans transition-colors duration-500 ease-in-out flex ${isDark ? "text-gray-200 bg-[#050c1a]" : "text-gray-800 bg-[#eef2ff]"}`}
@@ -108,6 +119,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       <main className="flex-1 min-w-0 flex flex-col min-h-screen transition-all duration-300 ease-in-out relative z-10 lg:pl-64">
         <AdminTopBar
           userName={userName}
+          userAvatar={userAvatar}
           onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
           isMobileMenuOpen={isSidebarOpen}
         />

@@ -153,7 +153,7 @@ const Explore: React.FC = () => {
               images: item.imageUrls ? item.imageUrls.split(',').filter(Boolean) : [],
               providerId: item.prestataire.id,
               providerName: item.prestataire.nom,
-              rating: item.prestataire.note || 4.5,
+              rating: item.prestataire.note ?? 0,
               reviews: Math.floor(Math.random() * 200),
               img: item.prestataire.avatar,
               location: locationStr || 'Maroc',
@@ -171,7 +171,7 @@ const Explore: React.FC = () => {
               name: item.nom,
               specialty: item.specialite || 'Spécialiste',
               location: item.location || 'Maroc',
-              rating: item.rating || 4.5,
+              rating: item.rating ?? 0,
               reviews: Math.floor(Math.random() * 200), 
               img: item.avatar,
               available: item.availableToday,
@@ -274,18 +274,6 @@ const Explore: React.FC = () => {
         <p className="text-xs text-gray-500 mt-2 font-medium">
           {minRating > 0 ? `${minRating} étoiles et plus` : 'Toutes les notes'}
         </p>
-      </div>
-
-      {/* Disponibilité (Toggle Switch) */}
-      <div>
-        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Disponibilité</h3>
-        <label className="flex items-center justify-between p-4 bg-gray-50 dark:bg-[#1a1d27]/60 rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-[#2d3148] transition-colors border border-transparent hover:border-gray-200 dark:hover:border-[#2d3148]">
-          <span className="text-sm font-semibold text-gray-900 dark:text-white">Disponible aujourd'hui</span>
-          <input type="checkbox" className="hidden" checked={onlyAvailable} onChange={(e) => setOnlyAvailable(e.target.checked)} />
-          <div className={`relative w-12 h-7 rounded-full transition-colors duration-300 ${onlyAvailable ? 'bg-[#1A6FD1]' : 'bg-gray-300 dark:bg-gray-600'}`}>
-            <div className={`absolute top-1 left-1 bg-white w-5 h-5 rounded-full shadow-sm transition-transform duration-300 ${onlyAvailable ? 'translate-x-5' : 'translate-x-0'}`} />
-          </div>
-        </label>
       </div>
     </div>
   );
@@ -634,52 +622,58 @@ const Explore: React.FC = () => {
                 />
                 <MapUpdater center={selectedCity && selectedCity !== 'Toutes' && CITY_COORDINATES[selectedCity] ? CITY_COORDINATES[selectedCity] : DEFAULT_CENTER} />
                 
-                {filteredResults.filter(provider => provider.enLocal).map(provider => (
-                  <Marker key={provider.id} position={[provider.lat, provider.lng]}>
-                    <Popup className="custom-popup" closeButton={false}>
-                      <div className="flex flex-col p-4 gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0" style={{ border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(200,215,255,0.5)'}` }}>
-                            {provider.img ? (
-                              <img src={provider.img} alt={provider.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-[#004a96] to-[#1A6FD1] text-white flex items-center justify-center font-bold text-lg">
-                                {provider.name?.charAt(0)}
-                              </div>
-                            )}
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider"
-                              style={{
-                                background: isDark ? 'rgba(26,111,209,0.14)' : 'rgba(26,111,209,0.08)',
-                                color: isDark ? '#60a5fa' : '#1a6fd1',
-                                border: `1px solid ${isDark ? 'rgba(26,111,209,0.3)' : 'rgba(26,111,209,0.18)'}`,
-                              }}>
-                              {provider.specialty}
-                            </span>
-                            <h4 className="font-fraunces font-bold text-sm mt-1 truncate" style={{ color: isDark ? '#f1f5f9' : '#1a2540' }}>
-                              {provider.name}
-                            </h4>
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <Star size={10} className="text-amber-400 fill-amber-400" />
-                              <span className="text-[10px] font-bold" style={{ color: isDark ? '#f1f5f9' : '#1a2540' }}>
-                                {provider.rating}
+                {filteredResults.filter(provider => provider.enLocal).map(provider => {
+                  const targetId = provider.isService ? provider.providerId : provider.id;
+                  return (
+                    <Marker key={provider.isService ? `srv-${provider.id}` : `prv-${provider.id}`} position={[provider.lat, provider.lng]}>
+                      <Popup className="custom-popup" closeButton={false}>
+                        <div className="flex flex-col p-4 gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0" style={{ border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(200,215,255,0.5)'}` }}>
+                              {provider.img ? (
+                                <img src={provider.img} alt={provider.isService ? provider.providerName : provider.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-[#004a96] to-[#1A6FD1] text-white flex items-center justify-center font-bold text-lg">
+                                  {(provider.isService ? provider.providerName : provider.name)?.charAt(0)}
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                              <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider"
+                                style={{
+                                  background: isDark ? 'rgba(26,111,209,0.14)' : 'rgba(26,111,209,0.08)',
+                                  color: isDark ? '#60a5fa' : '#1a6fd1',
+                                  border: `1px solid ${isDark ? 'rgba(26,111,209,0.3)' : 'rgba(26,111,209,0.18)'}`,
+                                }}>
+                                {provider.isService ? "Service" : provider.specialty}
                               </span>
+                              <h4 className="font-fraunces font-bold text-sm mt-1 truncate" style={{ color: isDark ? '#f1f5f9' : '#1a2540' }}>
+                                {provider.isService ? provider.providerName : provider.name}
+                              </h4>
+                              {provider.isService && (
+                                <p className="text-[10px] text-gray-500 truncate" style={{ marginTop: 1 }}>{provider.name}</p>
+                              )}
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <Star size={10} className="text-amber-400 fill-amber-400" />
+                                <span className="text-[10px] font-bold" style={{ color: isDark ? '#f1f5f9' : '#1a2540' }}>
+                                  {provider.rating}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                          
+                          <button 
+                            onClick={() => navigate(`/Service-Provider-Profile/${targetId}`)}
+                            className="bg-gradient-to-r from-[#1A6FD1] to-[#0c5a7c] text-white px-3 py-2 rounded-xl font-semibold text-[11px] w-full transition-all hover:shadow-lg hover:shadow-blue-500/20 active:scale-[0.98]"
+                          >
+                            Voir profil
+                          </button>
                         </div>
-                        
-                        <button 
-                          onClick={() => navigate(`/Service-Provider-Profile/${provider.id}`)}
-                          className="bg-gradient-to-r from-[#1A6FD1] to-[#0c5a7c] text-white px-3 py-2 rounded-xl font-semibold text-[11px] w-full transition-all hover:shadow-lg hover:shadow-blue-500/20 active:scale-[0.98]"
-                        >
-                          Voir profil
-                        </button>
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))}
+                      </Popup>
+                    </Marker>
+                  );
+                })}
               </MapContainer>
             </div>
           </aside>

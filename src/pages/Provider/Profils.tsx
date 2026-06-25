@@ -107,7 +107,7 @@ const Profils: React.FC = () => {
       setStatsSummary({
         totalRdv: appts.length,
         myClients: new Set(appts.map((a: any) => a.client?.idUtilisateur)).size,
-        rating: u.note || 5.0
+        rating: u.note ?? 0
       });
     } catch (err) {
       console.error("Error loading provider profile:", err);
